@@ -31,8 +31,8 @@ def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     
-    colornorm = [0,len(keys)/5.]
-    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], rticks=config.ticks['r'], colornorm=colornorm)
+    colornorm = [0,len(keys)/2.]
+    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], rticks=config.ticks['r'], colornorm=colornorm, normalize_for_speed=True)
     
     
     height = config.post_center[2]-config.ticks['z'][0]
@@ -99,6 +99,15 @@ def main(config, culled_dataset, save_figure_path=''):
     plot_heatmap(config, dataset_pulsing_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_yz.pdf')
     plot_heatmap(config, dataset_pulsing_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xz.pdf')
     plot_heatmap(config, dataset_pulsing_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_rz.pdf')
+    
+    # after odor
+    print
+    print 'After odor: '
+    dataset_after_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'afterodor')
+    plot_heatmap(config, dataset_after_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_after_odor_xy.pdf')
+    plot_heatmap(config, dataset_after_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_after_odor_yz.pdf')
+    plot_heatmap(config, dataset_after_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_after_odor_xz.pdf')
+    plot_heatmap(config, dataset_after_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_after_odor_rz.pdf')
     
 if __name__ == '__main__':
     config = analysis_configuration.Config()

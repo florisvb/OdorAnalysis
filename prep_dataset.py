@@ -43,6 +43,8 @@ def prep_data(culled_dataset, path, config):
         
     # DISTANCE STUFF
     print 'calculating distance to post and such'
+    fad.iterate_calc_function(culled_dataset, tac.calc_positions_normalized_by_speed, keys, normspeed=config.normspeed)  
+    fad.iterate_calc_function(culled_dataset, tac.calc_xy_distance_to_point, keys, config.post_center[0:2])  
     fad.iterate_calc_function(culled_dataset, tac.calc_distance_to_post, keys, config.post_center, config.post_radius)
 
     # LANDING STUFF
