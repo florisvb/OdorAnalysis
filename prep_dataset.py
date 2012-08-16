@@ -22,18 +22,28 @@ def culling_function(raw_dataset):
 
 def prep_data(culled_dataset, path, config):
     # stuff like calculating angular velocity, saccades etc.
+    keys = dataset.trajecs.keys()
     
+    # fix time_fly (not necessary with new flydra_analysis_dataset code as of 8/15/2012
     for key, trajec in culled_dataset.trajecs.items():
         trajec.time_fly = np.linspace(0,trajec.length/trajec.fps,trajec.length, endpoint=True) 
         
     culled_dataset.info = config.info
     fad.iterate_calc_function(culled_dataset, tac.calc_local_timestamps_from_strings) # calculate local timestamps
-    set_odor_stimulus(culled_dataset, config)
     
+    # ODOR STUFF
+    set_odor_stimulus(culled_dataset, config) # odor, no odor, pulsing odor, etc.
     if config.odor is True:
         oca.calc_odor_vs_no_odor_simple(culled_dataset, get_odor_control_filename(path, config))
     else:
         fad.set_attribute_for_trajecs(culled_dataset, 'in_odor', False)
+
+    # LANDING STUFF
+    fad.iterate_calc_function(culled_dataset, tac.calc_landing_on_post, keys, [0,0,0], .01)
+    
+    # SACCADES
+    fad.iterate_calc_function(culled_dataset, tac.calc_heading)
+    fad.iterate_calc_function(culled_dataset, tac.calc_saccades)
         
     return    
     
