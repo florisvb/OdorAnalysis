@@ -9,12 +9,16 @@ from plot_scripts import plot_heatmaps
 from plot_scripts import plot_spagetti
 from plot_scripts import plot_activity_histograms
 
-def main(path, config):
+def main(path, config, reprep=False):
 
-    if 1:
+    if reprep:
         culled_dataset = prep_dataset.main(path, config)
         dataset = culled_dataset
-        
+    else:
+        culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
+        culled_dataset = fad.load(culled_dataset_filename)
+        dataset = culled_dataset
+    
     if 0:
         raw_dataset_name = os.path.join(path, config.raw_datasets_path, config.raw_dataset_name)
         raw_dataset = fad.load(raw_dataset_name)

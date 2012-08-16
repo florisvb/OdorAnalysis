@@ -32,24 +32,31 @@ def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None):
     ax = fig.add_subplot(111)
     
     colornorm = [0,len(keys)/5.]
-    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], colornorm=colornorm)
+    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], rticks=config.ticks['r'], colornorm=colornorm)
     
+    
+    height = config.post_center[2]-config.ticks['z'][0]
     
     artists = []
     if axis == 'xy':
         ax.set_xlabel('x axis, upwind negative')
         ax.set_ylabel('y axis')
-        post = patches.Circle([0,0], .02, color='black')
+        post = patches.Circle(config.post_center[0:2], config.post_radius, color='black')
         artists.append(post)
     if axis == 'xz':
         ax.set_xlabel('x axis, upwind negative')
         ax.set_ylabel('z axis')
-        post = patches.Rectangle([-.01,-.15], .02, .15, color='black')
+        post = patches.Rectangle([-1*config.post_radius, config.ticks['z'][0]], config.post_radius*2, height, color='black')
         artists.append(post)
     if axis == 'yz':
         ax.set_xlabel('y axis')
         ax.set_ylabel('z axis')
-        post = patches.Rectangle([-.01,-.15], .02, .15, color='black')
+        post = patches.Rectangle([-1*config.post_radius, config.ticks['z'][0]], config.post_radius*2, height, color='black')
+        artists.append(post)
+    if axis == 'rz':
+        ax.set_xlabel('r axis')
+        ax.set_ylabel('z axis')
+        post = patches.Rectangle([0.0,config.ticks['z'][0]], config.post_radius, height, color='black')
         artists.append(post)
     
     if artists is not None:
@@ -73,6 +80,7 @@ def main(config, culled_dataset, save_figure_path=''):
     plot_heatmap(config, dataset_in_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_odor_xy.pdf')
     plot_heatmap(config, dataset_in_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_odor_yz.pdf')
     plot_heatmap(config, dataset_in_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_odor_xz.pdf')
+    plot_heatmap(config, dataset_in_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_odor_rz.pdf')
 
     # not in odor
     print
@@ -81,6 +89,7 @@ def main(config, culled_dataset, save_figure_path=''):
     plot_heatmap(config, dataset_no_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_no_odor_xy.pdf')
     plot_heatmap(config, dataset_no_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_no_odor_yz.pdf')
     plot_heatmap(config, dataset_no_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_no_odor_xz.pdf')
+    plot_heatmap(config, dataset_no_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_no_odor_rz.pdf')
     
     # pulse odor
     print
@@ -89,6 +98,7 @@ def main(config, culled_dataset, save_figure_path=''):
     plot_heatmap(config, dataset_pulsing_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xy.pdf')
     plot_heatmap(config, dataset_pulsing_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_yz.pdf')
     plot_heatmap(config, dataset_pulsing_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xz.pdf')
+    plot_heatmap(config, dataset_pulsing_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_rz.pdf')
     
 if __name__ == '__main__':
     config = analysis_configuration.Config()
