@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import os
 sys.path.append('../')
 import flydra_analysis_tools as fat
 from flydra_analysis_tools import floris_plot_lib as fpl
@@ -20,7 +21,7 @@ def get_keys(dataset):
 
 ################# plotting functions #######################
 
-def plot_colored_cartesian_spagetti(dataset, axis='xy', xlim=(-0.2, .2), ylim=(-0.75, .25), zlim=(0, 0.3), keys=None, keys_to_highlight=[], show_saccades=False, colormap='jet', color_attribute='speed', norm=(0,0.5), artists=None, save_figure_path=''):
+def plot_colored_cartesian_spagetti(config, dataset, axis='xy', xlim=(-0.2, .2), ylim=(-0.75, .25), zlim=(0, 0.3), keys=None, keys_to_highlight=[], show_saccades=False, colormap='jet', color_attribute='speed', norm=(0,0.5), artists=None, save_figure_path='', figname=None):
     keys = get_keys(dataset)
     print 'plotting spagetti, axis: ', axis
     print 'number of keys: ', len(keys)
@@ -37,7 +38,7 @@ def plot_colored_cartesian_spagetti(dataset, axis='xy', xlim=(-0.2, .2), ylim=(-
         ax.set_autoscale_on(True)
         ax.set_aspect('equal')
         axes=[0,1]
-        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=300, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
         
     if axis=='yz': # yz plane
         ax.set_ylim(zlim[0], zlim[1])
@@ -45,16 +46,24 @@ def plot_colored_cartesian_spagetti(dataset, axis='xy', xlim=(-0.2, .2), ylim=(-
         ax.set_autoscale_on(True)
         ax.set_aspect('equal')
         axes=[1,2]
-        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=300, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        
+    if axis=='xz': # xz plane
+        ax.set_ylim(zlim[0], zlim[1])
+        ax.set_xlim(xlim[0], xlim[1])
+        ax.set_autoscale_on(True)
+        ax.set_aspect('equal')
+        axes=[0,2]
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
         
     if artists is not None:
         for artist in artists:
             ax.add_artist(artist)
 
     #prep_cartesian_spagetti_for_saving(ax)
-    xticks = np.linspace(xlim[0], xlim[1], 3, endpoint=True).tolist()
-    yticks = np.linspace(ylim[0], ylim[1], 5, endpoint=True).tolist()
-    zticks = np.linspace(zlim[0], zlim[1], 3, endpoint=True).tolist()
+    xticks = config.ticks['x']
+    yticks = config.ticks['y']
+    zticks = config.ticks['z']
     
     if axis=='xy':
         fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=yticks)
@@ -67,20 +76,52 @@ def plot_colored_cartesian_spagetti(dataset, axis='xy', xlim=(-0.2, .2), ylim=(-
         ax.set_xlabel('y axis, m')
         ax.set_ylabel('z axis, m')
         ax.set_title('yz plot, color=speed from 0-0.5 m/s')
+        
+    if axis=='xz':
+        fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=zticks)
+        ax.set_xlabel('x axis, m')
+        ax.set_ylabel('z axis, m')
+        ax.set_title('xz plot, color=speed from 0-0.5 m/s')
 
     fig.set_size_inches(8,8)
-    figname = save_figure_path + 'spagetti_' + axis + '.pdf'
+    if figname is None:
+        figname = save_figure_path + 'spagetti_' + axis + '.pdf'
+    else:
+        figname = os.path.join(save_figure_path, figname)
     fig.savefig(figname, format='pdf')
 
     return ax
     
     
     
-def main(culled_dataset, save_figure_path=''):
+def main(config, culled_dataset, save_figure_path=''):
     print
     print 'Plotting spagetti'
-    plot_colored_cartesian_spagetti(culled_dataset, axis='xy', save_figure_path=save_figure_path)
-    plot_colored_cartesian_spagetti(culled_dataset, axis='yz', save_figure_path=save_figure_path)
+    
+    # in odor
+    print
+    print 'Odor: '
+    dataset_in_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'on')
+    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_odor_xy.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_odor_yz.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_odor_xz.pdf')
+
+    # not in odor
+    print
+    print 'No odor: '
+    dataset_no_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'none')
+    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_no_odor_xy.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_no_odor_yz.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_no_odor_xz.pdf')
+    
+    # pulse odor
+    print
+    print 'Pulsing odor: '
+    dataset_pulsing_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'pulsing')
+    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_xy.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_yz.pdf')
+    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_pulsing_xz.pdf')
+    
 
 if __name__ == '__main__':
     config = analysis_configuration.Config()

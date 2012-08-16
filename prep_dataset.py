@@ -7,25 +7,34 @@ fad = fat.flydra_analysis_dataset
 dac = fat.dataset_analysis_core
 tac = fat.trajectory_analysis_core
 
+import numpy as np
+
 import analysis_modules.odor_control_analysis as oca
 
 ####################### analysis functions ###########################
 def culling_function(raw_dataset):
-    culled_dataset = dac.cull_dataset_min_frames(raw_dataset, min_length_frames=10, reset=True)
-    culled_dataset = dac.cull_dataset_cartesian_volume(culled_dataset, [-.2, .2], [-1,.3], [-.1,.4], reset=True)
-    culled_dataset = dac.cull_dataset_min_speed(culled_dataset, min_speed=0.05, reset=True)
+    culled_dataset = dac.cull_dataset_min_frames(raw_dataset, min_length_frames=50, reset=True)
+    culled_dataset = dac.cull_dataset_cartesian_volume(culled_dataset, [-1,1], [-.3,.3], [-.3,.3], reset=True)
+    culled_dataset = dac.cull_dataset_flight_envelope(culled_dataset, x_range=[-.1,.9], y_range=[-.12,.12], z_range=[-.1,.1], reset=True)
+    culled_dataset = dac.cull_dataset_min_speed(culled_dataset, min_speed=0.01, reset=True)
     return culled_dataset
 
 
 def prep_data(culled_dataset, path, config):
     # stuff like calculating angular velocity, saccades etc.
+    
+    for key, trajec in culled_dataset.trajecs.items():
+        trajec.time_fly = np.linspace(0,trajec.length/trajec.fps,trajec.length, endpoint=True) 
+        
     culled_dataset.info = config.info
     fad.iterate_calc_function(culled_dataset, tac.calc_local_timestamps_from_strings) # calculate local timestamps
+    set_odor_stimulus(culled_dataset, config)
     
     if config.odor is True:
         oca.calc_odor_vs_no_odor_simple(culled_dataset, get_odor_control_filename(path, config))
     else:
         fad.set_attribute_for_trajecs(culled_dataset, 'in_odor', False)
+        
     return    
     
 def get_odor_control_filename(path, config):
@@ -56,6 +65,22 @@ def get_odor_control_filename(path, config):
     odor_control_filename = os.path.join(path, config.odor_control_path, odor_control_filename)
         
     return odor_control_filename
+    
+
+def set_odor_stimulus(dataset, config):
+
+    def in_range(val, minmax):
+        if val > minmax[0] and val < minmax[1]:
+            return True
+        else:
+            return False
+    
+    for key, trajec in dataset.trajecs.items():
+        trajec.odor_stimulus = 'none' # default
+        for stim_name, minmax in config.odor_stimulus.items():
+            if in_range(trajec.timestamp_local_float, minmax):
+                trajec.odor_stimulus = stim_name
+            
         
         
 def main(path, config):

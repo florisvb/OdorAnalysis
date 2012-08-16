@@ -11,11 +11,11 @@ from plot_scripts import plot_activity_histograms
 
 def main(path, config):
 
-    if 0:
+    if 1:
         culled_dataset = prep_dataset.main(path, config)
         dataset = culled_dataset
         
-    if 1:
+    if 0:
         raw_dataset_name = os.path.join(path, config.raw_datasets_path, config.raw_dataset_name)
         raw_dataset = fad.load(raw_dataset_name)
         prep_dataset.prep_data(raw_dataset, path, config)
@@ -24,8 +24,8 @@ def main(path, config):
     
     figure_path = os.path.join(path, config.figure_path)
     
-    plot_heatmaps.main(dataset, save_figure_path=os.path.join(figure_path, 'heatmaps/') )
-    plot_spagetti.main(dataset, save_figure_path=os.path.join(figure_path, 'spagetti/') )
+    plot_heatmaps.main(config, dataset, save_figure_path=os.path.join(figure_path, 'heatmaps/') )
+    plot_spagetti.main(config, dataset, save_figure_path=os.path.join(figure_path, 'spagetti/') )
     plot_activity_histograms.main(dataset, save_figure_path=os.path.join(figure_path, 'activity/') )
     
 if __name__ == '__main__':
