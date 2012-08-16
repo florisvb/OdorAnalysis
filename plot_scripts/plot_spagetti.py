@@ -38,7 +38,7 @@ def plot_colored_cartesian_spagetti(config, dataset, axis='xy', xlim=(-0.2, .2),
         ax.set_autoscale_on(True)
         ax.set_aspect('equal')
         axes=[0,1]
-        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=10, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
         
     if axis=='yz': # yz plane
         ax.set_ylim(zlim[0], zlim[1])
@@ -46,7 +46,7 @@ def plot_colored_cartesian_spagetti(config, dataset, axis='xy', xlim=(-0.2, .2),
         ax.set_autoscale_on(True)
         ax.set_aspect('equal')
         axes=[1,2]
-        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=10, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
         
     if axis=='xz': # xz plane
         ax.set_ylim(zlim[0], zlim[1])
@@ -54,7 +54,7 @@ def plot_colored_cartesian_spagetti(config, dataset, axis='xy', xlim=(-0.2, .2),
         ax.set_autoscale_on(True)
         ax.set_aspect('equal')
         axes=[0,2]
-        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=100, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
+        fap.cartesian_spagetti(ax, dataset, keys=keys, nkeys=10, start_key=0, axes=axes, show_saccades=show_saccades, keys_to_highlight=[], colormap=colormap, color_attribute=color_attribute, norm=norm, show_start=False)
         
     if artists is not None:
         for artist in artists:

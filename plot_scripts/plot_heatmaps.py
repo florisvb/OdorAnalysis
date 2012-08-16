@@ -10,6 +10,7 @@ tac = fat.trajectory_analysis_core
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import patches
 
 ################# get trajectory keys #################
 
@@ -33,7 +34,24 @@ def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None):
     colornorm = [0,len(keys)/5.]
     fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], colornorm=colornorm)
     
-    artists = []    
+    
+    artists = []
+    if axis == 'xy':
+        ax.set_xlabel('x axis, upwind negative')
+        ax.set_ylabel('y axis')
+        post = patches.Circle([0,0], .02, color='black')
+        artists.append(post)
+    if axis == 'xz':
+        ax.set_xlabel('x axis, upwind negative')
+        ax.set_ylabel('z axis')
+        post = patches.Rectangle([-.01,-.15], .02, .15, color='black')
+        artists.append(post)
+    if axis == 'yz':
+        ax.set_xlabel('y axis')
+        ax.set_ylabel('z axis')
+        post = patches.Rectangle([-.01,-.15], .02, .15, color='black')
+        artists.append(post)
+    
     if artists is not None:
         for artist in artists:
             ax.add_artist(artist)
