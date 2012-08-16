@@ -22,26 +22,35 @@ def culling_function(raw_dataset):
 
 def prep_data(culled_dataset, path, config):
     # stuff like calculating angular velocity, saccades etc.
-    keys = dataset.trajecs.keys()
+    keys = culled_dataset.trajecs.keys()
     
     # fix time_fly (not necessary with new flydra_analysis_dataset code as of 8/15/2012
+    print 'fixing time_fly'
     for key, trajec in culled_dataset.trajecs.items():
         trajec.time_fly = np.linspace(0,trajec.length/trajec.fps,trajec.length, endpoint=True) 
         
     culled_dataset.info = config.info
+    print 'calculating local timestamps'
     fad.iterate_calc_function(culled_dataset, tac.calc_local_timestamps_from_strings) # calculate local timestamps
     
     # ODOR STUFF
+    print 'odor calculations'
     set_odor_stimulus(culled_dataset, config) # odor, no odor, pulsing odor, etc.
     if config.odor is True:
         oca.calc_odor_vs_no_odor_simple(culled_dataset, get_odor_control_filename(path, config))
     else:
         fad.set_attribute_for_trajecs(culled_dataset, 'in_odor', False)
+        
+    # DISTANCE STUFF
+    print 'calculating distance to post and such'
+    fad.iterate_calc_function(culled_dataset, tac.calc_distance_to_post, keys, config.post_center, config.post_radius)
 
     # LANDING STUFF
-    fad.iterate_calc_function(culled_dataset, tac.calc_landing_on_post, keys, [0,0,0], .01)
+    print 'classifying landing vs not landing'
+    fad.iterate_calc_function(culled_dataset, tac.calc_post_behavior, keys, config.post_center, config.post_radius)
     
     # SACCADES
+    print 'calculating heading and saccades'
     fad.iterate_calc_function(culled_dataset, tac.calc_heading)
     fad.iterate_calc_function(culled_dataset, tac.calc_saccades)
         
@@ -104,6 +113,8 @@ def main(path, config):
     
     try:
         culled_dataset = fad.load(culled_dataset_name)
+        prep_data(culled_dataset, path, config)
+        fad.save(culled_dataset, culled_dataset_name)
         print 'Loaded culled dataset'
     except:
         try:
@@ -118,8 +129,6 @@ def main(path, config):
         fad.save(culled_dataset, culled_dataset_name)
         print 'Saved culled dataset'
         
-    prep_data(culled_dataset, path, config)
-    
     return culled_dataset
     
 if __name__ == '__main__':
