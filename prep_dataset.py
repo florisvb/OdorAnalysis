@@ -9,7 +9,7 @@ tac = fat.trajectory_analysis_core
 
 import numpy as np
 
-import analysis_modules.odor_control_analysis as oca
+import analysis_modules.odor_packet_analysis as opa
 
 ####################### analysis functions ###########################
 def culling_function(raw_dataset):
@@ -37,9 +37,9 @@ def prep_data(culled_dataset, path, config):
     print 'odor calculations'
     set_odor_stimulus(culled_dataset, config) # odor, no odor, pulsing odor, etc.
     if config.odor is True:
-        oca.calc_odor_vs_no_odor_simple(culled_dataset, get_odor_control_filename(path, config))
+        opa.calc_odor_signal_for_trajectories(path, culled_dataset, config=config)
     else:
-        fad.set_attribute_for_trajecs(culled_dataset, 'in_odor', False)
+        fad.set_attribute_for_trajecs(culled_dataset, 'odor', False)
         
     # DISTANCE STUFF
     print 'calculating distance to post and such'
@@ -58,36 +58,6 @@ def prep_data(culled_dataset, path, config):
         
     return    
     
-def get_odor_control_filename(path, config):
-    
-    odor_control_path = os.path.join(path, config.odor_control_path)
-    if 1: # default to find a file in the path
-        try:
-            cmd = 'ls ' + odor_control_path
-            ls = os.popen(cmd).read()
-            all_filelist = ls.split('\n')
-        except:
-            all_filelist = None
-            print 'Could not find odor control path - might need to make it first'
-        
-        if all_filelist is not None:
-            try:
-                all_filelist.remove('')
-            except:
-                pass
-            if len(all_filelist) == 1:
-                odor_control_filename = all_filelist[0]
-            else:
-                print 'could not find unique odor control file in path'
-            
-    if 0: # hard code the odor control file
-        odor_control_filename = config.odor_control_filename
-        
-    odor_control_filename = os.path.join(path, config.odor_control_path, odor_control_filename)
-        
-    return odor_control_filename
-    
-
 def set_odor_stimulus(dataset, config):
 
     def in_range(val, minmax):

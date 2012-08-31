@@ -31,9 +31,9 @@ def plot_activity_histogram(dataset, save_figure_path=''):
     no_odor_local_time = []
     for i, key in enumerate(keys):
         trajec = dataset.trajecs[key]
-        if trajec.in_odor is True:
+        if trajec.odor is not False:
             odor_local_time.append( trajec.timestamp_local_float )
-        elif trajec.in_odor is False:
+        else:
             no_odor_local_time.append( trajec.timestamp_local_float )
     odor_local_time = np.array(odor_local_time)
     no_odor_local_time = np.array(no_odor_local_time)

@@ -77,37 +77,41 @@ def main(config, culled_dataset, save_figure_path=''):
     print
     print 'Odor: '
     dataset_in_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'on')
-    plot_heatmap(config, dataset_in_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_odor_xy.pdf')
-    plot_heatmap(config, dataset_in_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_odor_yz.pdf')
-    plot_heatmap(config, dataset_in_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_odor_xz.pdf')
-    plot_heatmap(config, dataset_in_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_odor_rz.pdf')
+    if len(dataset_in_odor.trajecs.keys()) > 0:
+        plot_heatmap(config, dataset_in_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_odor_xy.pdf')
+        plot_heatmap(config, dataset_in_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_odor_yz.pdf')
+        plot_heatmap(config, dataset_in_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_odor_xz.pdf')
+        plot_heatmap(config, dataset_in_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_odor_rz.pdf')
 
     # not in odor
     print
     print 'No odor: '
     dataset_no_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'none')
-    plot_heatmap(config, dataset_no_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_no_odor_xy.pdf')
-    plot_heatmap(config, dataset_no_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_no_odor_yz.pdf')
-    plot_heatmap(config, dataset_no_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_no_odor_xz.pdf')
-    plot_heatmap(config, dataset_no_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_no_odor_rz.pdf')
+    if len(dataset_no_odor.trajecs.keys()) > 0:
+        plot_heatmap(config, dataset_no_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_no_odor_xy.pdf')
+        plot_heatmap(config, dataset_no_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_no_odor_yz.pdf')
+        plot_heatmap(config, dataset_no_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_no_odor_xz.pdf')
+        plot_heatmap(config, dataset_no_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_no_odor_rz.pdf')
     
     # pulse odor
     print
     print 'Pulsing odor: '
     dataset_pulsing_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'pulsing')
-    plot_heatmap(config, dataset_pulsing_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xy.pdf')
-    plot_heatmap(config, dataset_pulsing_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_yz.pdf')
-    plot_heatmap(config, dataset_pulsing_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xz.pdf')
-    plot_heatmap(config, dataset_pulsing_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_rz.pdf')
+    if len(dataset_pulsing_odor.trajecs.keys()) > 0:
+        plot_heatmap(config, dataset_pulsing_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xy.pdf')
+        plot_heatmap(config, dataset_pulsing_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_yz.pdf')
+        plot_heatmap(config, dataset_pulsing_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_xz.pdf')
+        plot_heatmap(config, dataset_pulsing_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_pulsing_odor_rz.pdf')
     
     # after odor
     print
     print 'After odor: '
     dataset_after_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'afterodor')
-    plot_heatmap(config, dataset_after_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_after_odor_xy.pdf')
-    plot_heatmap(config, dataset_after_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_after_odor_yz.pdf')
-    plot_heatmap(config, dataset_after_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_after_odor_xz.pdf')
-    plot_heatmap(config, dataset_after_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_after_odor_rz.pdf')
+    if len(dataset_after_odor.trajecs.keys()) > 0:
+        plot_heatmap(config, dataset_after_odor, 'xy', save_figure_path=save_figure_path, figname='heatmap_after_odor_xy.pdf')
+        plot_heatmap(config, dataset_after_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_after_odor_yz.pdf')
+        plot_heatmap(config, dataset_after_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_after_odor_xz.pdf')
+        plot_heatmap(config, dataset_after_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_after_odor_rz.pdf')
     
 if __name__ == '__main__':
     config = analysis_configuration.Config()

@@ -102,25 +102,28 @@ def main(config, culled_dataset, save_figure_path=''):
     print
     print 'Odor: '
     dataset_in_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'on')
-    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_odor_xy.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_odor_yz.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_odor_xz.pdf')
+    if len(dataset_in_odor.trajecs.keys()) > 0:
+        plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_odor_xy.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_odor_yz.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_in_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_odor_xz.pdf')
 
     # not in odor
     print
     print 'No odor: '
     dataset_no_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'none')
-    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_no_odor_xy.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_no_odor_yz.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_no_odor_xz.pdf')
+    if len(dataset_no_odor.trajecs.keys()) > 0:
+        plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_no_odor_xy.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_no_odor_yz.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_no_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_no_odor_xz.pdf')
     
     # pulse odor
     print
     print 'Pulsing odor: '
     dataset_pulsing_odor = fad.make_dataset_with_attribute_filter(culled_dataset, 'odor_stimulus', 'pulsing')
-    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_xy.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_yz.pdf')
-    plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_pulsing_xz.pdf')
+    if len(dataset_pulsing_odor.trajecs.keys()) > 0:
+        plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xy', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_xy.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='yz', save_figure_path=save_figure_path, figname='spagetti_pulsing_odor_yz.pdf')
+        plot_colored_cartesian_spagetti(config, dataset_pulsing_odor, axis='xz', save_figure_path=save_figure_path, figname='spagetti_pulsing_xz.pdf')
     
 
 if __name__ == '__main__':
