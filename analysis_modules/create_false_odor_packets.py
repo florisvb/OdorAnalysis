@@ -6,7 +6,7 @@ import copy
 
 import data_fit
 import odor_dataset as od
-import floris_plot_lib as fpl
+import fly_plot_lib.plot as fpl
 
 import matplotlib
 

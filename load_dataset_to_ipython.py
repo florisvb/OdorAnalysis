@@ -6,15 +6,19 @@ fad = fat.flydra_analysis_dataset
 dac = fat.dataset_analysis_core
 tac = fat.trajectory_analysis_core
 
+import fly_plot_lib.plot as fpl
+
 import numpy as np
 import matplotlib
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 
 import analysis_modules.odor_packet_analysis as opa
 
 sys.path.append(path)
 import analysis_configuration
 config = analysis_configuration.Config()
+
+import plot_scripts.plot_odor_trajectory as pot
 
 
 print 'loading culled_dataset, as dataset'

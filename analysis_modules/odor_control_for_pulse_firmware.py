@@ -5,33 +5,13 @@ from ros_flydra.srv import *
 import time
 import os
 import pickle
-
-"""
-Python serial interface to the IO Rodeo solid state relay expansion board for 
-the Arduino Nano. 
-
-Author: Will Dickson, IO Rodeo Inc.
-
-Copyright 2010  IO Rodeo Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
 import serial
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 import odor_dataset as od
-import floris_plot_lib as fpl
+import fly_plot_lib.plot as fpl
 
 class BasicSSR(serial.Serial):
 
@@ -181,10 +161,11 @@ def calc_mean_odor_trace(odor_dataset, ignore_traces=[1,2,3,4], led_position_vec
     odor_dataset.mean_odor_trace = mean_odor_trace
     
     
-def plot_mean_odor_trace(odor_dataset, ignore_traces=[1,2,3,4]):
+def plot_mean_odor_trace(odor_dataset, ignore_traces=[1,2,3,4], ax=None):
     
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
     
     ignore_traces_strings = ['_' + str(i) for i in ignore_traces]
     for key, odor_trace in odor_dataset.odor_traces.items():
@@ -202,14 +183,11 @@ def plot_mean_odor_trace(odor_dataset, ignore_traces=[1,2,3,4]):
     ax.set_ylabel('control signal and odor response')
     ax.set_title('raw odor traces + signal, and mean (red)')
     
-    
 def plot_mean_odor_trace_from_file(filename):
-    
     f = open(filename)
     odor_dataset = pickle.load(f)
     calc_mean_odor_trace(odor_dataset)  
     plot_mean_odor_trace(odor_dataset)
-    
     
 def find_delay(odor_trace, units='time'):
     signal = odor_trace.signal - np.mean(odor_trace.signal)
@@ -363,15 +341,15 @@ def run_diverse_fly_experiment():
         dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
     time.sleep(2.0) # Sleep for serial reset of arduino
     
-    localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 360.
+    localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
     while localtime > 12 and localtime < 24:
         time.sleep(2)
-        localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 360.
+        localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
     
     hours_to_keep_odor_on = 3
     pulse_length = hours_to_keep_odor_on*60*60
     pulse_interval = 0
-    exp_length = pulse_length + 30
+    exp_length = pulse_length
     dev.pulse(ssr_num, pulse_length, pulse_interval, exp_length, record_data)
     time.sleep(0.5)
     raw_data = dev.listen_for_control_signal_only()
@@ -442,10 +420,7 @@ yield: 187 sccm
 if __name__ == '__main__':
     #run_experiment(filename='odor_dataset', pulse_length=100, pulse_interval=1000, num_pulses=0, exp_length=1*60*1000, record_data=1, odor_type='acetone', resistance=100, num_trials=1, gain=10)
     
-    run_odor_experiment()
-    
-    print 'done'
-
+    pass
 
 
 

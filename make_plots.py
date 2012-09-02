@@ -1,6 +1,9 @@
 import sys, os
 from optparse import OptionParser
 
+import fly_plot_lib
+fly_plot_lib.set_params.pdf()
+
 import flydra_analysis_tools.flydra_analysis_dataset as fad
 import prep_dataset
 

@@ -2,7 +2,9 @@
 import sys
 sys.path.append('../')
 import flydra_analysis_tools as fat
-from flydra_analysis_tools import floris_plot_lib as fpl
+import fly_plot_lib
+fly_plot_lib.set_params.pdf()
+import fly_plot_lib.plot as fpl
 fad = fat.flydra_analysis_dataset
 dac = fat.dataset_analysis_core
 fap = fat.flydra_analysis_plot
@@ -12,6 +14,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
 
+import odor_packet_analysis as opa
+
 ################# get trajectory keys #################
 
 def get_keys(dataset):
@@ -20,8 +24,9 @@ def get_keys(dataset):
 
 ################# plotting functions #######################
 
-def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None):
-    keys = get_keys(dataset)
+def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None, keys=None, frames=None):
+    if keys is None:
+        keys = get_keys(dataset)
     print 'plotting heatmap, axis: ', axis
     print 'number of keys: ', len(keys)
     if len(keys) < 1:
@@ -32,7 +37,7 @@ def plot_heatmap(config, dataset, axis='xy', save_figure_path='', figname=None):
     ax = fig.add_subplot(111)
     
     colornorm = [0,len(keys)/2.]
-    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], rticks=config.ticks['r'], colornorm=colornorm, normalize_for_speed=True)
+    fap.heatmap(ax, dataset, axis=axis, keys=keys, xticks=config.ticks['x'], yticks=config.ticks['y'], zticks=config.ticks['z'], rticks=config.ticks['r'], colornorm=colornorm, normalize_for_speed=False, frame_list=frames)
     
     
     height = config.post_center[2]-config.ticks['z'][0]
@@ -112,6 +117,19 @@ def main(config, culled_dataset, save_figure_path=''):
         plot_heatmap(config, dataset_after_odor, 'yz', save_figure_path=save_figure_path, figname='heatmap_after_odor_yz.pdf')
         plot_heatmap(config, dataset_after_odor, 'xz', save_figure_path=save_figure_path, figname='heatmap_after_odor_xz.pdf')
         plot_heatmap(config, dataset_after_odor, 'rz', save_figure_path=save_figure_path, figname='heatmap_after_odor_rz.pdf')
+        
+        
+        
+    # only flies that passed through odor (prior to post)
+    print 
+    print 'Flies that passed through odor: '
+    keys = opa.get_keys_with_odor_before_post(config, culled_dataset, threshold_odor=50, threshold_distance=0.01, odor_stimulus='pulsing', upwind_only=True)
+    frames = opa.get_frames_after_odor(culled_dataset, keys, frames_to_show_before_odor=25)
+    if len(keys) > 0:
+        plot_heatmap(config, culled_dataset, 'xy', keys=keys, frames=frames, save_figure_path=save_figure_path, figname='heatmap_flies_in_odor_plume_xy.pdf')
+        plot_heatmap(config, culled_dataset, 'yz', keys=keys, frames=frames, save_figure_path=save_figure_path, figname='heatmap_flies_in_odor_plume_yz.pdf')
+        plot_heatmap(config, culled_dataset, 'xz', keys=keys, frames=frames, save_figure_path=save_figure_path, figname='heatmap_flies_in_odor_plume_xz.pdf')
+        plot_heatmap(config, culled_dataset, 'rz', keys=keys, frames=frames, save_figure_path=save_figure_path, figname='heatmap_flies_in_odor_plume_rz.pdf')
     
 if __name__ == '__main__':
     config = analysis_configuration.Config()

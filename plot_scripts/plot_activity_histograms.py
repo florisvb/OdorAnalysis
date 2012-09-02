@@ -2,7 +2,9 @@
 import sys
 sys.path.append('../')
 import flydra_analysis_tools as fat
-from flydra_analysis_tools import floris_plot_lib as fpl
+import fly_plot_lib
+fly_plot_lib.set_params.pdf()
+import fly_plot_lib.plot as fpl
 fad = fat.flydra_analysis_dataset
 dac = fat.dataset_analysis_core
 fap = fat.flydra_analysis_plot
