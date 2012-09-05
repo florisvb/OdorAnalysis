@@ -31,7 +31,7 @@ def main(path, config, reprep=False):
     
     figure_path = os.path.join(path, config.figure_path)
     
-    plot_heatmaps.main(config, dataset, save_figure_path=os.path.join(figure_path, 'heatmaps/') )
+    plot_heatmaps.pdf_book(config, dataset, save_figure_path=os.path.join(figure_path, 'heatmaps/') )
     plot_spagetti.main(config, dataset, save_figure_path=os.path.join(figure_path, 'spagetti/') )
     plot_activity_histograms.main(dataset, save_figure_path=os.path.join(figure_path, 'activity/') )
     

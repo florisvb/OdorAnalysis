@@ -341,6 +341,8 @@ def run_diverse_fly_experiment():
         dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
     time.sleep(2.0) # Sleep for serial reset of arduino
     
+    print 'running! '
+    
     localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
     while localtime > 12 and localtime < 24:
         time.sleep(2)

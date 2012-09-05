@@ -16,7 +16,7 @@ import analysis_modules.odor_packet_analysis as opa
 
 sys.path.append(path)
 import analysis_configuration
-config = analysis_configuration.Config()
+config = analysis_configuration.Config(path)
 
 import plot_scripts.plot_odor_trajectory as pot
 

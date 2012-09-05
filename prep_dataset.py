@@ -13,7 +13,7 @@ import analysis_modules.odor_packet_analysis as opa
 
 ####################### analysis functions ###########################
 def culling_function(raw_dataset):
-    culled_dataset = dac.cull_dataset_min_frames(raw_dataset, min_length_frames=50, reset=True)
+    culled_dataset = dac.cull_dataset_min_frames(raw_dataset, min_length_frames=150, reset=True)
     culled_dataset = dac.cull_dataset_cartesian_volume(culled_dataset, [-1,1], [-.3,.3], [-.3,.3], reset=True)
     culled_dataset = dac.cull_dataset_flight_envelope(culled_dataset, x_range=[-.1,.9], y_range=[-.12,.12], z_range=[-.1,.1], reset=True)
     culled_dataset = dac.cull_dataset_min_speed(culled_dataset, min_speed=0.01, reset=True)
@@ -46,13 +46,14 @@ def prep_data(culled_dataset, path, config):
     fad.iterate_calc_function(culled_dataset, tac.calc_positions_normalized_by_speed, keys, normspeed=config.normspeed)  
     fad.iterate_calc_function(culled_dataset, tac.calc_xy_distance_to_point, keys, config.post_center[0:2])  
     fad.iterate_calc_function(culled_dataset, tac.calc_distance_to_post, keys, config.post_center, config.post_radius)
-
+    
     # LANDING STUFF
     print 'classifying landing vs not landing'
     fad.iterate_calc_function(culled_dataset, tac.calc_post_behavior, keys, config.post_center, config.post_radius)
     
     # SACCADES
     print 'calculating heading and saccades'
+    fad.iterate_calc_function(culled_dataset, tac.calc_velocities_normed)
     fad.iterate_calc_function(culled_dataset, tac.calc_heading)
     fad.iterate_calc_function(culled_dataset, tac.calc_saccades)
         

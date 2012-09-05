@@ -16,7 +16,7 @@ def get_positions(odor_dataset):
     return [np.array(x), np.array(y), np.array(z)]        
 
 def get_odor(timestamps, odor_dataset):
-    odor = []
+    odor = [] # list of odor values at each PID point, for each time point
     for t in timestamps:
         odor_at_t = []
         for key, odor_trace in odor_dataset.odor_traces.items():
@@ -24,6 +24,23 @@ def get_odor(timestamps, odor_dataset):
             odor_at_t.append( odor_at_t_interpolated )
         odor.append(np.array(odor_at_t))
     return odor
+    
+def get_odor_static(timestamps, odor_dataset):
+    odor = []
+    for t in timestamps:
+        odor_at_t = []
+        for key, odor_trace in odor_dataset.odor_traces.items():
+            odor_at_t_interpolated = np.interp(t, odor_trace.timestamps, odor_trace.voltage)
+            odor_at_t.append( odor_at_t_interpolated )
+        odor.append(np.array(odor_at_t))
+        
+    # reformat odor and pull out max
+    odor_array = np.zeros([len(odor), len(odor[0])])
+    for i, timepoint in enumerate(odor):
+        odor_array[i,:] = timepoint    
+    max_odor = odor_array.max(axis=0)
+        
+    return max_odor
 
 def fit_gaussian3d_timevarying(odor_dataset, timestamps=None):   
 
@@ -37,3 +54,18 @@ def fit_gaussian3d_timevarying(odor_dataset, timestamps=None):
     gm.fit(timestamps, odor, positions)
     
     return gm    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

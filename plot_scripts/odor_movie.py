@@ -115,7 +115,7 @@ def play_odor_movie(path, config, trajec, axis='xy', axis_slice=0.04, save=False
     
 ######################################################################################################################
 
-def play_odor_movie_2_axes(path, config, trajec, axis_slice_xy=0.04, axis_slice_xz=0.01, save=False):
+def play_odor_movie_2_axes(path, config, trajec, axis_slice_xy=0.04, axis_slice_xz=0.01, save=False, nskip=0):
     
     # animation parameters
     anim_params = {'t': 10, 'xlim': [-.2,1], 'ylim': [-0.15,.15], 'zlim': [-.15, .15], 't_max': 15., 'dt': 0.05, 'resolution': 0.001, 'ghost_tail': 20, 'ghost_start': 0, 'trajec': trajec}
@@ -165,7 +165,7 @@ def play_odor_movie_2_axes(path, config, trajec, axis_slice_xy=0.04, axis_slice_
         return im_xy, im_xz, flies_xy, flies_xz
     
     def updatefig(*args):
-        anim_params['ghost_start'] += 1
+        anim_params['ghost_start'] += 1 + nskip
         if anim_params['ghost_tail'] + anim_params['ghost_start'] > anim_params['trajec'].length:
             anim_params['ghost_start'] = 0
         indices = np.arange(anim_params['ghost_start'], anim_params['ghost_start']+anim_params['ghost_tail'],1).tolist()
@@ -220,6 +220,8 @@ if __name__ == '__main__':
                         help="key of trajec to make a movie of")        
     parser.add_option("--axis", type="str", dest="axis", default='xy',
                         help="axis")  
+    parser.add_option("--nskip", type="int", dest="nskip", default=0,
+                        help="n frames to skip (to speed it up)")  
     parser.add_option("--save", dest="save", action="store_true", default=False,
                         help="save movie?")         
                         
@@ -229,6 +231,7 @@ if __name__ == '__main__':
     key = options.key
     axis = options.axis
     save = options.save
+    nskip = options.nskip
     
     sys.path.append(path)
     import analysis_configuration
@@ -239,7 +242,7 @@ if __name__ == '__main__':
     
     trajec = culled_dataset.trajecs[key]
     
-    play_odor_movie_2_axes(path, config, trajec, save=save)
+    play_odor_movie_2_axes(path, config, trajec, save=save, nskip=nskip)
     
     
     
