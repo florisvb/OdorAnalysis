@@ -41,25 +41,45 @@ def get_trajectory_with_max_odor_signal(dataset, odor_stimulus='pulsing'):
     else:
         return None
         
-def get_keys_with_odor_before_post(config, dataset, threshold_odor=50, threshold_distance=0.1, upwind_only=True, odor_stimulus='pulsing'):
+def get_keys_with_odor_before_post(config, dataset, threshold_odor=50, odor_stimulus='pulsing', threshold_distance_min=0.1, odor=True, post_behavior=None):
     keys = []
     for key, trajec in dataset.trajecs.items():
-        if trajec.odor_stimulus == odor_stimulus:
+        add_key = True
+        indices_in_odor = np.where(trajec.odor > threshold_odor)[0]
+        index_at_max_odor = np.argmax(trajec.odor)
+        position_at_max_odor = trajec.positions[index_at_max_odor]
+        signed_distance_to_post = position_at_max_odor[0] - config.post_center[0]
+                
+        if trajec.odor_stimulus == odor_stimulus: pass
+        else: add_key = False
+        
+        if np.max(trajec.distance_to_post) > 0.05: pass
+        else: add_key = False
+            
+        odor_check = False
+        if odor:
             if np.max(trajec.odor) > threshold_odor:
-                
-                index_at_max_odor = np.argmax(trajec.odor)
-                position_at_max_odor = trajec.positions[index_at_max_odor]
-                signed_distance_to_post = position_at_max_odor[0] - config.post_center[0]
-                
-                if signed_distance_to_post > threshold_distance:
-                    
-                    if upwind_only:                    
-                        indices_in_odor = np.where(trajec.odor > threshold_odor)[0]
-                        avg_x_fly_direction_in_odor = np.mean(np.diff(trajec.positions[indices_in_odor.tolist()][:,0]))
-                        if avg_x_fly_direction_in_odor < 0:
-                            keys.append(key)
-                    else:
-                        keys.append(key)
+                odor_check = True
+        else:
+            if np.max(trajec.odor) < threshold_odor:
+                odor_check = True
+        
+        if odor_check: pass
+        else: add_key = False
+            
+        
+        if trajec.distance_to_post_min < threshold_distance_min: pass
+        else: add_key = False
+        
+            
+        if post_behavior is not None:
+            if post_behavior not in trajec.post_behavior:
+                add_key = False
+        
+        if add_key:
+            keys.append(key)
+                                
+                            
     return keys
     
 def get_keys_with_odor_before_post_fictive(config, dataset, threshold_odor=50, threshold_distance=0.1, upwind_only=True, odor_stimulus='pulsing'):
@@ -163,9 +183,10 @@ def get_timestamps_epoch_from_odor_control_signal_file(path, config):
         
     return np.array(timestamps_signal_on)
     
-def get_time_relative_to_last_odor_pulse(t, timestamps_signal_on):
+def get_time_relative_to_last_odor_pulse(t, timestamps_signal_on, delay=12):
+    # find pulse closest to about delay (12) seconds ago (most likely to have odor then)
     try:
-        most_recent_pulse_index = np.where((t- timestamps_signal_on)>0)[0][-1]
+        most_recent_pulse_index = np.argmin(np.abs(t- (timestamps_signal_on+12) )) # np.where((t- timestamps_signal_on)>0)[0][-1]
         t_relative_to_signal = t - timestamps_signal_on[most_recent_pulse_index]
     except:
         t_relative_to_signal = 0
@@ -255,7 +276,7 @@ def get_gaussian_model(path, config):
     
     return gm
 
-def plot_gaussian_model_vs_raw_data(gm, filename):
+def plot_gaussian_model_vs_raw_data(gm, filename, save=True):
     f = open(filename)
     odor_dataset = pickle.load(f)
     led_position_vector = get_led_position_vector()
@@ -270,6 +291,11 @@ def plot_gaussian_model_vs_raw_data(gm, filename):
     timestamps, odor_vals = gm.get_time_trace_at_point(timerange, mot.position)
     
     ax.plot(timestamps, odor_vals, color='blue')
+    
+    path = os.path.dirname(filename)
+    name = os.path.basename(filename) + '_gm_comparison.pdf'
+    plotname = os.path.join(path, name)
+    fig.savefig(plotname, format='pdf')
     
 def plot_gaussian_model_vs_raw_data_for_all_traces(gm, path_to_odor_packets):
     cmd = 'ls ' + path_to_odor_packets
@@ -346,8 +372,8 @@ def print_interesting_keys(config, dataset, threshold_odor=75, threshold_distanc
                 # frames where fly closer than X to post
                 dist_threshold = 0.03
                 frames_close_to_post = np.where(trajec.distance_to_post < dist_threshold)[0]
-                frames_close_to_post_after_odor = frames_close_to_post > frame_max_odor
-                time_spent_at_distance_threshold.append(np.sum(frames_close_to_post_after_odor))
+                frames_close_to_post_after_odor = frames_close_to_post #> frame_max_odor
+                time_spent_at_distance_threshold.append(len(frames_close_to_post_after_odor))
                 
             
     print

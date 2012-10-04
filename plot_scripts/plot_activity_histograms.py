@@ -55,7 +55,7 @@ def plot_activity_histogram(dataset, save_figure_path=''):
         data.append(no_odor_local_time)
         colors.append('blue')
         
-    fpl.histogram(ax, data, bins=bins, bin_width_ratio=0.8, colors=colors, edgecolor='none', bar_alpha=1, curve_fill_alpha=0.4, curve_line_alpha=0, curve_butter_filter=[3,0.3], return_vals=False, show_smoothed=True, normed=True, normed_occurences=False, bootstrap_std=False, exponential_histogram=False)
+    fpl.histogram(ax, data, bins=bins, bin_width_ratio=0.8, colors=colors, edgecolor='none', bar_alpha=1, curve_fill_alpha=0.4, curve_line_alpha=0, curve_butter_filter=[3,0.3], return_vals=False, show_smoothed=True, normed=False, normed_occurences=False, bootstrap_std=False, exponential_histogram=False)
     
     xticks = np.linspace(bins[0], bins[-1], 5, endpoint=True)
     fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks)

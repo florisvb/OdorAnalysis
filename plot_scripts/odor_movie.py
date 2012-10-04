@@ -68,7 +68,7 @@ def play_odor_movie(path, config, trajec, axis='xy', axis_slice=0.04, save=False
     y = trajec.positions[:,axes[1]]
     color = trajec.odor
     orientation = trajec.heading_smooth
-    flies = fpl.get_wedges_for_heading_plot(x, y, color, orientation, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolors='none', alpha=1, flip=True, deg=False, nskip=0)
+    flies = fpl.get_wedges_for_heading_plot(x, y, color, orientation, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolor='none', alpha=1, flip=True, deg=False, nskip=0)
     ax.add_collection(flies)
     
     def init_plot(): 
@@ -154,8 +154,8 @@ def play_odor_movie_2_axes(path, config, trajec, axis_slice_xy=0.04, axis_slice_
     orientation_xy = trajec.heading_smooth
     tac.calc_heading_for_axes(trajec, axis='xz')
     orientation_xz = trajec.heading_smooth_xz
-    flies_xy = fpl.get_wedges_for_heading_plot(x, y, color, orientation_xy, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolors='none', alpha=1, flip=True, deg=False, nskip=0)
-    flies_xz = fpl.get_wedges_for_heading_plot(x, z, color, orientation_xz, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolors='none', alpha=1, flip=True, deg=False, nskip=0)
+    flies_xy = fpl.get_wedges_for_heading_plot(x, y, color, orientation_xy, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolor='none', alpha=1, flip=True, deg=False, nskip=0)
+    flies_xz = fpl.get_wedges_for_heading_plot(x, z, color, orientation_xz, size_radius=0.015, size_angle=20, colormap='jet', colornorm=None, edgecolor='none', alpha=1, flip=True, deg=False, nskip=0)
     ax_xy.add_collection(flies_xy)
     ax_xz.add_collection(flies_xz)
     

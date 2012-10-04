@@ -11,6 +11,9 @@ import prep_dataset
 from plot_scripts import plot_heatmaps
 from plot_scripts import plot_spagetti
 from plot_scripts import plot_activity_histograms
+from plot_scripts import plot_distance_histograms
+from plot_scripts import plot_landing_histogram
+from plot_scripts import plot_change_in_heading_after_saccade as sachead
 
 def main(path, config, reprep=False):
 
@@ -32,8 +35,11 @@ def main(path, config, reprep=False):
     figure_path = os.path.join(path, config.figure_path)
     
     plot_heatmaps.pdf_book(config, dataset, save_figure_path=os.path.join(figure_path, 'heatmaps/') )
-    plot_spagetti.main(config, dataset, save_figure_path=os.path.join(figure_path, 'spagetti/') )
-    plot_activity_histograms.main(dataset, save_figure_path=os.path.join(figure_path, 'activity/') )
+    #plot_spagetti.main(config, dataset, save_figure_path=os.path.join(figure_path, 'spagetti/') )
+    #plot_activity_histograms.main(dataset, save_figure_path=os.path.join(figure_path, 'activity/') )
+    #plot_distance_histograms.plot_distance_histogram(config, dataset, save_figure_path='')
+    plot_landing_histogram.plot_landing_histogram(config, dataset)
+    sachead.main(config, dataset)
     
 if __name__ == '__main__':
     parser = OptionParser()
@@ -44,6 +50,6 @@ if __name__ == '__main__':
     path = options.path    
     sys.path.append(path)
     import analysis_configuration
-    config = analysis_configuration.Config()
+    config = analysis_configuration.Config(path)
     
     main(path, config)

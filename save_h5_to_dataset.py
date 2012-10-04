@@ -2,7 +2,7 @@ import sys, os
 from optparse import OptionParser
 
 import flydra_analysis_tools as fat
-
+fad = fat.flydra_analysis_dataset
 
 def get_h5_filelist(path, kalmanized=False):
     cmd = 'ls ' + path
@@ -57,22 +57,32 @@ def main(config):
             filelist = get_h5_filelist(h5_path, kalmanized=kalmanized)
             
             for filename in filelist:
-                if filename not in raw_dataset.h5_files_loaded:
-                    raw_dataset.load(filename)
+                if os.path.basename(filename) not in raw_dataset.h5_files_loaded:
+                    raw_dataset.load_data(filename)
+                    
+            raw_dataset.save(savename)
             
         except:
             print 'could not find or load raw_dataset -- loading all h5'
             fat.flydra_analysis_dataset.load_all_h5s_in_directory(h5_path, print_filenames_only=False, kalmanized=kalmanized, savedataset=True, savename=savename, kalman_smoothing=kalman_smoothing, dynamic_model=None, fps=None, info=config.info, save_covariance=save_covariance, tmp_path=tmp_path)
 
     else:
-        dataset = fat.flydra_analysis_dataset.Dataset()
-        for h5_file in config.h5_files:
-            if config.h5_path not in h5_file:
-                h5_file = os.path.join(path, config.h5_path, h5_file)
-            dataset.load_data(h5_file, kalman_smoothing=kalman_smoothing, dynamic_model=None, fps=None, info=config.info, save_covariance=save_covariance)
+    
+        try:
+            raw_dataset = fad.load(savename)
+            
+        except:
+            print 'could not find or load raw_dataset -- starting from scratch'
+            raw_dataset = fat.flydra_analysis_dataset.Dataset()
 
-        dataset.save(savename)
-        
+        for h5_file in config.h5_files:
+            if h5_file not in raw_dataset.h5_files_loaded:
+                if config.h5_path not in h5_file:
+                    h5_file = os.path.join(path, config.h5_path, h5_file)
+                raw_dataset.load_data(h5_file, kalman_smoothing=kalman_smoothing, dynamic_model=None, fps=None, info=config.info, save_covariance=save_covariance)
+                
+        raw_dataset.save(savename)
+
 
 
 if __name__ == '__main__':

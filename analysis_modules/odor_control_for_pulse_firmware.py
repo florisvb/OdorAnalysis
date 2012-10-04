@@ -189,6 +189,29 @@ def plot_mean_odor_trace_from_file(filename):
     calc_mean_odor_trace(odor_dataset)  
     plot_mean_odor_trace(odor_dataset)
     
+    
+############
+
+def plot_odor_trace_from_file(filename, ax=None):
+    f = open(filename)
+    odor_trace = pickle.load(f)
+    
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    
+    ax.plot(odor_trace.timestamps - odor_trace.timestamps[0], odor_trace.signal, 'red')
+    ax.plot(odor_trace.timestamps - odor_trace.timestamps[0], odor_trace.voltage, 'black')
+    
+    ax.set_ylim(odor_trace.voltage[0]-10, np.max(odor_trace.voltage)+10)
+        
+    fpl.adjust_spines(ax, ['left', 'bottom'])
+    ax.set_xlabel('time, sec')
+    ax.set_ylabel('control signal and odor response')
+    ax.set_title('raw odor traces + signal, and mean (red)')
+    
+############
+    
 def find_delay(odor_trace, units='time'):
     signal = odor_trace.signal - np.mean(odor_trace.signal)
     signal /= np.std(signal)
@@ -288,7 +311,7 @@ def get_odor_dataset_from_means(path, led_position_vector=[0,0,0]):
 # Run Experiments
 ###################################################################
 
-def run_experiment(savepath='', dev=None, pulse_length=0.4, pulse_interval=10, exp_length=200, record_data=1):
+def run_experiment(savepath='', dev=None, pulse_length=0.4, pulse_interval=10, exp_length=200, record_data=1, flydra=False):
     if dev is None:
         dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
     time.sleep(2.0) # Sleep for serial reset of arduino
@@ -302,9 +325,12 @@ def run_experiment(savepath='', dev=None, pulse_length=0.4, pulse_interval=10, e
     odor_trace = save_as_odor_trace(time_computer, time_arduino, ssr_val, voltage, resolution=0.001)
     
     # get position from flydra
-    fsl = Flydra_Service_Listener()
-    odor_trace.position_led = fsl.get_mean_led_position()
+    if flydra:
+        print 'getting flydra data'
+        fsl = Flydra_Service_Listener()
+        odor_trace.position_led = fsl.get_mean_led_position()
     
+    print 'additional processing, and saving'
     basekey = time.strftime("%Y%m%d_%H%M%S_",time.localtime())
     odor_dataset = split_pulse_train(odor_trace, odor_dataset=None, basekey=basekey)
     remove_steady_state_from_dataset(odor_dataset, -1000, -1)
@@ -318,6 +344,30 @@ def run_experiment(savepath='', dev=None, pulse_length=0.4, pulse_interval=10, e
     f.close()
     
     return odor_trace, odor_dataset
+    
+    
+def run_long_pulse(savepath='', dev=None, pulse_length=100, pulse_interval=100, exp_length=500, record_data=1):
+    if dev is None:
+        dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
+    time.sleep(2.0) # Sleep for serial reset of arduino
+    
+    ssr_num = 0
+    dev.pulse(ssr_num, pulse_length, pulse_interval, exp_length, record_data)
+    time.sleep(0.5)
+    raw_data = dev.listen()
+    time_computer, time_arduino, ssr_val, voltage = process_raw_data(raw_data)
+    odor_trace = save_as_odor_trace(time_computer, time_arduino, ssr_val, voltage, resolution=0.001)
+    
+    basekey = time.strftime("%Y%m%d_%H%M%S_",time.localtime())
+    
+    fname = time.strftime("odor_dataset_%Y%m%d_%H%M%S",time.localtime())
+    fname_with_path = os.path.join(savepath, fname)
+    f = open(fname_with_path, 'w')
+    pickle.dump(odor_trace, f)
+    f.close()
+    
+    return odor_trace
+    
     
 def run_fly_experiment(savepath='', dev=None, pulse_length=0.4, pulse_interval=30, exp_length=54000, record_data=0):
     if dev is None:
@@ -358,12 +408,69 @@ def run_diverse_fly_experiment():
     
     hours_to_pulse_odor = 6
     pulse_length = 0.4
-    pulse_interval = 30
+    pulse_interval = 10
     exp_length = hours_to_pulse_odor*60*60
     dev.pulse(ssr_num, pulse_length, pulse_interval, exp_length, record_data)
     time.sleep(0.5)
     raw_data = dev.listen_for_control_signal_only()
-            
+    
+
+    
+def run_hour_on_hour_off_fly_experiment():
+
+    savepath=''
+    dev=None
+    ssr_num = 0
+    record_data=0
+
+    if dev is None:
+        dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
+    time.sleep(2.0) # Sleep for serial reset of arduino
+    
+    print 'running! '
+    
+    localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
+    while localtime > 12 and localtime < 20:
+        time.sleep(2)
+        localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
+    
+    hours_to_keep_odor_on = 1
+    pulse_length = hours_to_keep_odor_on*60*60
+    pulse_interval = 2*60*60
+    exp_length = 14*60*60
+    dev.pulse(ssr_num, pulse_length, pulse_interval, exp_length, record_data)
+    time.sleep(0.5)
+    raw_data = dev.listen_for_control_signal_only()
+    
+
+def run_night_odor():
+
+    savepath=''
+    dev=None
+    ssr_num = 0
+    record_data=0
+
+    if dev is None:
+        dev = BasicSSR(port='/dev/ttyUSB0',timeout=1, baudrate=115200)
+    time.sleep(2.0) # Sleep for serial reset of arduino
+    
+    print 'running! '
+    
+    localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
+    while localtime > 12 and localtime < 24:
+        time.sleep(2)
+        localtime = (time.localtime()).tm_hour + (time.localtime()).tm_min / 60. + (time.localtime()).tm_sec / 3600.
+    
+    hours_to_keep_odor_on = 4
+    pulse_length = hours_to_keep_odor_on*60*60
+    pulse_interval = 0
+    exp_length = pulse_length
+    dev.pulse(ssr_num, pulse_length, pulse_interval, exp_length, record_data)
+    time.sleep(0.5)
+    raw_data = dev.listen_for_control_signal_only()
+    
+    
+    
     
 ###################################################################
 # Flydra stuff

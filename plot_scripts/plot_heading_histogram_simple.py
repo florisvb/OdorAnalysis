@@ -305,16 +305,17 @@ if __name__ == '__main__':
     culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
     dataset = fad.load(culled_dataset_filename)
         
-    path_control = options.path_control    
-    analysis_configuration_control = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
-    config_control = analysis_configuration.Config(path_control)
-    culled_dataset_control_filename = os.path.join(path_control, config_control.culled_datasets_path, config_control.culled_dataset_name) 
-    dataset_control = fad.load(culled_dataset_control_filename)
+    path_control = options.path_control   
+    if path_control != '': 
+        analysis_configuration_control = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
+        config_control = analysis_configuration.Config(path_control)
+        culled_dataset_control_filename = os.path.join(path_control, config_control.culled_datasets_path, config_control.culled_dataset_name) 
+        dataset_control = fad.load(culled_dataset_control_filename)
     
     if options.plot == 'visual_motion':
-        
         visual_motion(dataset, config, dataset_control, config_control)
-    
+    elif options.plot == 'headings':
+        headings_parsed(dataset, config, visual_stimulus='none')
     
     
     

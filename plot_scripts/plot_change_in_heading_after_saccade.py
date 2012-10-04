@@ -1,6 +1,8 @@
 # heading during odor
 import os, sys
 sys.path.append('../analysis_modules')
+import imp
+from optparse import OptionParser
 import fly_plot_lib
 fly_plot_lib.set_params.pdf()
 from matplotlib.backends.backend_pdf import PdfPages
@@ -9,6 +11,8 @@ import fly_plot_lib.plot as fpl
 import odor_packet_analysis as opa
 
 import flydra_analysis_tools.trajectory_analysis_core as tac
+import flydra_analysis_tools.flydra_analysis_dataset as fad
+
 import help_functions as hf
 
 import numpy as np
@@ -111,7 +115,7 @@ def plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimu
     ax.set_xlabel('Heading before saccade')
     ax.set_ylabel('Angle of saccade')
     
-    title_text = 'Odor: ' + odor_stimulus
+    title_text = 'Odor: ' + odor_stimulus + ' Visual Stim: ' + trajec.visual_stimulus
     ax.set_title(title_text)
     
     ax.text(0,-180, 'Upwind', horizontalalignment='center', verticalalignment='top')
@@ -138,40 +142,46 @@ def pdf_book(config, dataset, save_figure_path='', axis='xy'):
 
     threshold_odor=30
     threshold_distance_min=.1
+    visual_stimulus = ['none', 'upwind', 'downwind']
     
-    for odor in [True]:
-        
-        key_set = {}
-        for odor_stimulus in config.odor_stimulus.keys():
-            #keys_tmp = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=threshold_distance_min, odor=odor)
+    for vstim in visual_stimulus:
+    
+        for odor in [True]:
             
-            
-            keys = []
-            for key in dataset.trajecs.keys():
-                trajec = dataset.trajecs[key]
-                add_key = True
+            key_set = {}
+            for odor_stimulus in config.odor_stimulus.keys():
+                #keys_tmp = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=threshold_distance_min, odor=odor)
                 
-                if odor:
-                    if np.max(trajec.odor) > threshold_odor:
-                        frames_in_odor = np.where(trajec.odor > threshold_odor)[0]
-                        if len(frames_in_odor) < 5:
+                
+                keys = []
+                for key in dataset.trajecs.keys():
+                    trajec = dataset.trajecs[key]
+                    add_key = True
+                    
+                    if odor:
+                        if np.max(trajec.odor) > threshold_odor:
+                            frames_in_odor = np.where(trajec.odor > threshold_odor)[0]
+                            if len(frames_in_odor) < 5:
+                                add_key = False
+                        else:
                             add_key = False
-                    else:
+                    if trajec.odor_stimulus != odor_stimulus:
                         add_key = False
-                if trajec.odor_stimulus != odor_stimulus:
-                    add_key = False
+                    
+                    if trajec.visual_stimulus != vstim:
+                        add_key = False
+                    
+                    if add_key:
+                        keys.append(key)
                 
-                if add_key:
-                    keys.append(key)
-            
-            if len(keys) > 0:    
-                key_set.setdefault(odor_stimulus, keys)
+                if len(keys) > 0:    
+                    key_set.setdefault(odor_stimulus, keys)
 
-        for odor_stimulus, keys in key_set.items():
-            print 'Odor Book, Chapter: ', odor_stimulus
-            
-            #book_name = 'odor_headings_book_' + odor_stimulus + '_' + str(odor) + '.pdf'
-            plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimulus, keys=keys, axis=axis)
+            for odor_stimulus, keys in key_set.items():
+                print 'Odor Book, Chapter: ', odor_stimulus
+                
+                #book_name = 'odor_headings_book_' + odor_stimulus + '_' + str(odor) + '.pdf'
+                plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimulus, keys=keys, axis=axis)
             
             
     pp.close()
@@ -180,5 +190,17 @@ def main(config, dataset, axis='xy'):
     pdf_book(config, dataset, save_figure_path='', axis=axis)
 
 if __name__ == '__main__':
+    parser = OptionParser()
+    parser.add_option("--path", type="str", dest="path", default='',
+                        help="path to data folder, where you have a configuration file")
+                        
+    (options, args) = parser.parse_args()
+    
+    path = options.path    
+    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
+    config = analysis_configuration.Config(path)
+    culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
+    dataset = fad.load(culled_dataset_filename)
+
     pdf_book(config, dataset, save_figure_path='')
 

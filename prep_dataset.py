@@ -35,11 +35,15 @@ def prep_data(culled_dataset, path, config):
     
     # ODOR STUFF
     print 'odor calculations'
-    set_odor_stimulus(culled_dataset, config) # odor, no odor, pulsing odor, etc.
+    #set_odor_stimulus(culled_dataset, config) # odor, no odor, pulsing odor, etc.
+    set_stimulus(culled_dataset, config, 'odor_stimulus')
     if config.odor is True:
         opa.calc_odor_signal_for_trajectories(path, culled_dataset, config=config)
     else:
         fad.set_attribute_for_trajecs(culled_dataset, 'odor', False)
+        
+    # VISION STUFF
+    set_stimulus(culled_dataset, config, 'visual_stimulus')
         
     # DISTANCE STUFF
     print 'calculating distance to post and such'
@@ -60,7 +64,6 @@ def prep_data(culled_dataset, path, config):
     return    
     
 def set_odor_stimulus(dataset, config):
-
     def in_range(val, minmax):
         if val > minmax[0] and val < minmax[1]:
             return True
@@ -69,10 +72,44 @@ def set_odor_stimulus(dataset, config):
     
     for key, trajec in dataset.trajecs.items():
         trajec.odor_stimulus = 'none' # default
-        for stim_name, minmax in config.odor_stimulus.items():
-            if in_range(trajec.timestamp_local_float, minmax):
-                trajec.odor_stimulus = stim_name
-            
+        if type(config.odor_stimulus.values()[0][0]) is not list:
+            for stim_name, minmax in config.odor_stimulus.items():
+                if in_range(trajec.timestamp_local_float, minmax):
+                    trajec.odor_stimulus = stim_name
+        else:
+            for stim_name, list_of_minmax in config.odor_stimulus.items():
+                for minmax in list_of_minmax:
+                    if in_range(trajec.timestamp_local_float, minmax):
+                        trajec.odor_stimulus = stim_name
+                        
+def set_stimulus(dataset, config, stimulus):
+    def in_range(val, minmax):
+        if val > minmax[0] and val < minmax[1]:
+            return True
+        else:
+            return False
+    
+    for key, trajec in dataset.trajecs.items():
+        trajec.__setattr__(stimulus, 'none')
+        
+        if config.__getattribute__(stimulus) is None:
+            continue
+        
+        values = config.__getattribute__(stimulus).values()
+        items = config.__getattribute__(stimulus).items()
+        
+        for v in range(len(values)):
+            if type(values[v][0]) is not list:
+                stim_name = items[v][0]
+                minmax = items[v][1]
+                if in_range(trajec.timestamp_local_float, minmax):
+                    trajec.__setattr__(stimulus, stim_name)
+            else:
+                stim_name = items[v][0]
+                list_of_minmax = items[v][1]
+                for minmax in list_of_minmax:
+                    if in_range(trajec.timestamp_local_float, minmax):
+                        trajec.__setattr__(stimulus, stim_name)
         
         
 def main(path, config):
@@ -85,22 +122,16 @@ def main(path, config):
     print 'Culling and Preparing Data'
     
     try:
-        culled_dataset = fad.load(culled_dataset_name)
-        prep_data(culled_dataset, path, config)
-        fad.save(culled_dataset, culled_dataset_name)
-        print 'Loaded culled dataset'
+        raw_dataset = fad.load(raw_dataset_name)
+        print 'Loaded raw dataset'
     except:
-        try:
-            raw_dataset = fad.load(raw_dataset_name)
-            print 'Loaded raw dataset'
-        except:
-            print 'Cannot find dataset, run save_h5_to_dataset.py first'
-                
-        culled_dataset = culling_function(raw_dataset) 
-        print 'Preparing culled dataset'
-        prep_data(culled_dataset, path, config)
-        fad.save(culled_dataset, culled_dataset_name)
-        print 'Saved culled dataset'
+        print 'Cannot find dataset, run save_h5_to_dataset.py first'
+            
+    culled_dataset = culling_function(raw_dataset) 
+    print 'Preparing culled dataset'
+    prep_data(culled_dataset, path, config)
+    fad.save(culled_dataset, culled_dataset_name)
+    print 'Saved culled dataset'
         
     return culled_dataset
     
