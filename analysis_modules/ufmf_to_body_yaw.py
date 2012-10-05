@@ -509,7 +509,7 @@ def extract_signed_orientation(img, prev_pos=None):
     
 
 
-def main(filename, start, end, saveimages='/home/caveman/DATA/tmp_orientation_checks/images'):
+def main(filename, start, end, saveimages=None):#='/home/caveman/DATA/tmp_orientation_checks/images'):
     orientation_frames = {}
     movie = ufmf.FlyMovieEmulator(filename)
     if end == -1:
@@ -547,12 +547,16 @@ def main(filename, start, end, saveimages='/home/caveman/DATA/tmp_orientation_ch
 
 
 def process_ufmf(options):
-    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(options.path, 'analysis_configuration.py'))
-    config = analysis_configuration.Config(options.path)
+
+    try:    
+        analysis_configuration = imp.load_source('analysis_configuration', os.path.join(options.path, 'analysis_configuration.py'))
+        config = analysis_configuration.Config(options.path)
+        ufmf_path = os.path.join(options.path, 'data', 'ufmfs')   
+    except:    
+        ufmf_path = ''    
     orientation_frames = main(options.file, options.start, options.stop)
     
     filename = 'tmp_' + 'DATA_' + os.path.basename(options.file).split('.')[0]
-    ufmf_path = os.path.join(options.path, 'data', 'ufmfs')   
     filename_with_path = os.path.join(ufmf_path, filename) 
         
     f = open(filename_with_path, 'w')
