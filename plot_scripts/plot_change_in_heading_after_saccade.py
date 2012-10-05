@@ -106,7 +106,11 @@ def plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimu
     print odor_stimulus, saccade_angles_after_odor.shape
     
     #ax.plot(heading_at_saccade_initiation*180./np.pi, saccade_angles_after_odor*180./np.pi, '.', markersize=3)
-    fpl.scatter(ax, heading_at_saccade_initiation*180./np.pi, saccade_angles_after_odor*180./np.pi, color=saccade_number, radius=3, colornorm=[0,5])
+    fpl.scatter(ax, heading_at_saccade_initiation*180./np.pi, saccade_angles_after_odor*180./np.pi, color='black', radius=3, colornorm=[0,5])
+    
+    xpts = np.linspace(-180,180, 100)
+    ax.plot(xpts, -1*xpts, color='red', zorder=-10)
+    
     #ax.plot(heading_at_saccade_initiation*180./np.pi, heading_after_saccade*180./np.pi, '.')
     
     xticks = [-180, -90, 0, 90, 180]

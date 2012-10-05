@@ -1,6 +1,11 @@
 # heading during odor
 import os, sys
 sys.path.append('../analysis_modules')
+
+import imp
+from optparse import OptionParser
+
+
 import fly_plot_lib
 fly_plot_lib.set_params.pdf()
 from matplotlib.backends.backend_pdf import PdfPages
@@ -10,6 +15,7 @@ import odor_packet_analysis as opa
 
 from flydra_analysis_tools import floris_math
 import flydra_analysis_tools.trajectory_analysis_core as tac
+import flydra_analysis_tools.flydra_analysis_dataset as fad
 import help_functions as hf
 
 import numpy as np
@@ -78,11 +84,11 @@ def plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimu
                     #if np.abs(heading_prior_to_saccade) > 45*np.pi/180. and np.abs(heading_prior_to_saccade) < 135*np.pi/180.:
                     if np.abs(heading_prior_to_saccade) < 15*np.pi/180.:# and np.abs(heading_prior_to_saccade) < 135*np.pi/180.:
                         
-                        if 1:
+                        if 0:
                             frame_of_saccade_middle = np.argmax(np.abs(trajec.heading_smooth_diff[sac])) + sac[0]
                             time_of_sac = trajec.time_fly[frame_of_saccade_middle]
                         
-                        if 0:
+                        if 1:
                             frame_of_max_odor = np.argmax(trajec.odor[block])+block[0]
                             time_of_sac = trajec.time_fly[frame_of_max_odor]
 
@@ -239,5 +245,18 @@ def main(config, dataset):
     pdf_book(config, dataset, save_figure_path='')
 
 if __name__ == '__main__':
+    parser = OptionParser()
+    parser.add_option("--path", type="str", dest="path", default='',
+                        help="path to data folder, where you have a configuration file")
+                        
+    (options, args) = parser.parse_args()
+    
+    path = options.path    
+    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
+    config = analysis_configuration.Config(path)
+    culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
+    dataset = fad.load(culled_dataset_filename)
+
+
     pdf_book(config, dataset, save_figure_path='')
 

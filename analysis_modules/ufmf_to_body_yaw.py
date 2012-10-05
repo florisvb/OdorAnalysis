@@ -3,6 +3,8 @@ from optparse import OptionParser
 import pickle
 import imp
 
+from matplotlib.backends.backend_pdf import PdfPages
+
 import fly_plot_lib
 fly_plot_lib.set_params.pdf()
 import fly_plot_lib.plot as fpl
@@ -54,33 +56,79 @@ def calc_heading(velocities):
     heading_smooth[flipp] -= np.pi
     
     return heading_smooth
+    
 
-def get_heading_and_orientation(dataset, orientation_datafile, keys=None):
+
+    
+def calc_acceleration(velocities):
+    ## kalman
+    
+    data = velocities
+    ss = 6 # state size
+    os = 3 # observation size
+    F = np.array([   [1,0,0,1,0,0], # process update
+                     [0,1,0,0,1,0],
+                     [0,0,1,0,0,1],
+                     [0,0,0,1,0,0],
+                     [0,0,0,0,1,0],
+                     [0,0,0,0,0,1]],                  
+                    dtype=np.float)
+    H = np.array([   [1,0,0,0,0,0], [0,1,0,0,0,0], [0,0,1,0,0,0]], # observation matrix
+                    dtype=np.float)
+    Q = 0.01*np.eye(ss) # process noise
+    
+    R = 1*np.eye(os) # observation noise
+    
+    initx = np.array([velocities[0,0], velocities[0,1], velocities[0,2], 0, 0, 0], dtype=np.float)
+    initv = 0*np.eye(ss)
+    xsmooth,Vsmooth = kalman_math.kalman_smoother(data, F, H, Q, R, initx, initv, plot=False)
+
+    accel_smooth = xsmooth[:,3:]*100.
+    
+    return accel_smooth
+    
+    
+def load_ufmf_data_from_dict(orientation_datafile):
     datafile = open(orientation_datafile, 'r')
     data = pickle.load(datafile)
     timestamp = []
     orientation = []
     eccentricity = []
+    ufmf_frames = []
     for frame in data.keys():
         framedata = data[frame]
         if framedata is not None:
             timestamp.append(framedata['timestamp'])
             orientation.append(framedata['orientation'])
             eccentricity.append(framedata['eccentricity'])
+            ufmf_frames.append(frame)
     timestamp_ufmf = np.array(timestamp)
     orientation_ufmf = np.array(orientation)
     eccentricity_ufmf = np.array(eccentricity)
+    ufmf_frames_ufmf = np.array(ufmf_frames)
+    return timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf
+    
+
+def get_heading_and_orientation(dataset, orientation_datafile, keys=None, ufmf_data=None):
+    if ufmf_data is None:
+        timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf = load_ufmf_data_from_dict(orientation_datafile)
+    else:
+        timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf = ufmf_data
     
     heading_for_hist = []
     orientation_for_hist = []
     eccentricity_for_hist = []
     speed_for_hist = []
     velocities = None
+    frames = []
+    ufmf_frames = []
     
     if keys is None:
         keys = dataset.trajecs.keys()
     for key in keys:
         trajec = dataset.trajecs[key]
+        #accel_smooth = calc_acceleration(trajec.velocities)[:,2]
+        
         saccade_frames = saccade_frames = [item for sublist in trajec.saccades for item in sublist]
         timestamps_fly = trajec.timestamp_epoch + trajec.time_fly
         tdiff = np.abs(timestamp_ufmf-timestamps_fly[0])
@@ -98,9 +146,8 @@ def get_heading_and_orientation(dataset, orientation_datafile, keys=None):
                 continue
             if np.abs(trajec.positions[f,1]) > 0.1:
                 continue
-            if np.abs(trajec.velocities[f,2]) > 0.05:
+            if np.abs(trajec.velocities[f,2]) > 0.2:
                 continue
-            
 
             tdiff = np.abs(timestamp_ufmf-t)
             if np.min(tdiff) < 0.009:
@@ -110,6 +157,8 @@ def get_heading_and_orientation(dataset, orientation_datafile, keys=None):
                     orientation_for_hist.append(orientation_ufmf[index])
                     eccentricity_for_hist.append(eccentricity_ufmf[index])
                     speed_for_hist.append(trajec.speed[f])
+                    frames.append(f)
+                    ufmf_frames.append(ufmf_frames_ufmf[index])
                     
                     if velocities is None:
                         velocities = copy.copy(trajec.velocities[f])
@@ -123,7 +172,7 @@ def get_heading_and_orientation(dataset, orientation_datafile, keys=None):
                     else:
                         heading_for_hist.append(heading - np.pi)
     
-    return np.array(heading_for_hist), -1*np.array(orientation_for_hist), np.array(eccentricity_for_hist), np.array(speed_for_hist), velocities
+    return np.array(heading_for_hist), -1*np.array(orientation_for_hist), np.array(eccentricity_for_hist), np.array(speed_for_hist), velocities, frames, ufmf_frames
     
 
 def plot_eccentricity_vs_orientation(path, orientation_datafile, savename='orientation_vs_eccentricity.pdf'):
@@ -164,25 +213,29 @@ def plot_eccentricity_vs_speed_xy(path, orientation_datafile, savename='eccentri
     #keys = fad.get_keys_with_attr(dataset, ['odor_stimulus'], ['none'])
     keys = dataset.trajecs.keys()
 
-    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
+    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
     
     # airspeed headings
     velocities_air = copy.copy(velocities)
     velocities_air[:,0] -= 0.4
     heading_air = calc_heading(velocities_air)
     
+    slipangle = orientation_for_hist-heading_for_hist
+    slipangle = floris_math.fix_angular_rollover(slipangle)
+    small_slipangles = np.where(np.abs(slipangle) < 20*np.pi/180.)[0]
+    
     airspeed = np.array([np.linalg.norm(velocities_air[i,0:2]) for i in range(velocities_air.shape[0])])
     
     fig = plt.figure(figsize=(5,4))
     ax = fig.add_subplot(111)
     
-    xlim = [-1,1]
+    xlim = [0,.8]
     ylim = [0,1]
-    fpl.scatter(ax, velocities[:,0], eccentricity_for_hist, color=heading_air, colornorm=[-.4,.4], radius=.005, xlim=xlim, ylim=ylim)
+    fpl.scatter(ax, speed_for_hist[small_slipangles], eccentricity_for_hist[small_slipangles], color=slipangle[small_slipangles], colornorm=[0,np.pi], radius=.005, xlim=xlim, ylim=ylim)
     
     fpl.adjust_spines(ax, ['left', 'bottom'])
     
-    ax.set_xlabel('airspeed')
+    ax.set_xlabel('groundspeed magnitude')
     ax.set_ylabel('eccentricity (tight correlation with pitch)')
 
     path = config.path
@@ -206,7 +259,7 @@ def plot_eccentricity_vs_heading(path, orientation_datafile, savename='heading_v
     #keys = fad.get_keys_with_attr(dataset, ['odor_stimulus', 'visual_stimulus'], ['on', 'downwind'])
     keys = dataset.trajecs.keys()
 
-    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
+    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
     
     fig = plt.figure(figsize=(5,4))
     ax = fig.add_subplot(111)
@@ -245,7 +298,7 @@ def plot_orientation_vs_heading(path, orientation_datafile, savename='heading_vs
     #keys = fad.get_keys_with_attr(dataset, ['odor_stimulus', 'visual_stimulus'], ['on', 'none'])
     keys = dataset.trajecs.keys()
 
-    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
+    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
     
     # airspeed headings
     velocities_air = copy.copy(velocities)
@@ -258,13 +311,13 @@ def plot_orientation_vs_heading(path, orientation_datafile, savename='heading_vs
     xlim = [-np.pi, np.pi]
     ylim = [-np.pi, np.pi]
     
-    heading_type = 'groundspeed'
+    heading_type = 'airspeed'
     
     if heading_type == 'airspeed':
         x = np.array(heading_air)
     elif heading_type == 'groundspeed':
         x = np.array(heading_for_hist)
-    fpl.scatter(ax, x, np.array(orientation_for_hist), color=speed_for_hist, colornorm=[0.1,0.6], radius=.01, xlim=xlim, ylim=ylim)
+    fpl.scatter(ax, x, np.array(orientation_for_hist), color=eccentricity_for_hist, colornorm=[0.1,0.6], radius=.01, xlim=xlim, ylim=ylim)
     #ax.plot(heading_for_hist, eccentricity_for_hist, '.', markersize=1)
     
     xticks = [-np.pi, -np.pi/2., 0, np.pi/2., np.pi]
@@ -292,6 +345,56 @@ def plot_orientation_vs_heading(path, orientation_datafile, savename='heading_vs
     print 'SAVING TO: ', fig_name_with_path
     fig.savefig(fig_name_with_path, format='pdf')
     
+def plot_air_speed_slip_angles(path, orientation_datafile, savename='airspeed_slip.pdf'):
+    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
+    config = analysis_configuration.Config(path)
+    
+    culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
+    dataset = fad.load(culled_dataset_filename)
+    keys = fad.get_keys_with_attr(dataset, ['odor_stimulus', 'visual_stimulus'], ['on', 'none'])
+    #keys = dataset.trajecs.keys()
+
+    heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
+    
+    # airspeed headings
+    velocities_air = copy.copy(velocities)
+    velocities_air[:,0] -= 0.4
+    heading_air = calc_heading(velocities_air)
+    
+    fig = plt.figure(figsize=(5,4))
+    ax = fig.add_subplot(111)
+    
+    xlim = [-np.pi, np.pi]
+    ylim = [-np.pi, np.pi]
+    
+    heading_type = 'airspeed'
+    
+    bins=np.linspace(-np.pi, np.pi, 100)
+        
+    data = [orientation_for_hist, orientation_for_hist - np.array(heading_air), np.array(heading_for_hist), orientation_for_hist - np.array(heading_for_hist)]
+    fpl.histogram(ax, data, bins=bins, bin_width_ratio=1, colors=['black', 'green', 'red', 'blue'], edgecolor='none', bar_alpha=1, curve_fill_alpha=0.2, curve_line_alpha=1, curve_butter_filter=[3,0.3], return_vals=False, show_smoothed=True, normed=True, normed_occurences=False)
+    
+    xticks = [-np.pi, -np.pi/2., 0, np.pi/2., np.pi]
+    ax.set_xlim(xticks[0], xticks[1])
+    fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks)
+    xticklabels = ['-180', '-90', '0', '90', '180']
+    ax.set_xticklabels(xticklabels)
+    
+    ax.set_xlabel('slip angle (black: airspeed slip, red: groundspeed slip')
+    ax.set_ylabel('occurences, normalized')
+    
+
+    path = config.path
+    figure_path = os.path.join(config.path, config.figure_path)
+    save_figure_path=os.path.join(figure_path, 'odor_traces/')
+        
+    figure_path = os.path.join(path, config.figure_path)
+    save_figure_path = os.path.join(figure_path, 'odor_traces/')
+    fig_name_with_path = os.path.join(save_figure_path, savename)
+
+    print 'SAVING TO: ', fig_name_with_path
+    fig.savefig(fig_name_with_path, format='pdf')
+    
     
 def plot_orientation_histogram(path, orientation_datafile, keys=None, savename='orientation_histogram.pdf'):
     analysis_configuration = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
@@ -302,7 +405,7 @@ def plot_orientation_histogram(path, orientation_datafile, keys=None, savename='
         dataset = fad.load(culled_dataset_filename)
         keys = fad.get_keys_with_attr(dataset, ['odor_stimulus'], ['on'])
     
-        heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
+        heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=keys)
     
     else:
         timestamps,x,y,orientation_for_hist,eccentricity = load_data(orientation_datafile, return_zeros_for_no_data=False)
@@ -368,13 +471,14 @@ def load_data(datafile, return_zeros_for_no_data=False):
 
 
 def extract_unsigned_orientation_and_position(img):
-    center, longaxis, shortaxis, body, ratio = nim.find_ellipse(img, background=None, threshrange=[0,120], sizerange=[10,350], erode=False)
+    center, longaxis, shortaxis, body, ratio = nim.find_ellipse(img, background=None, threshrange=[0,120], sizerange=[10,500], erode=False)
     unsigned_orientation = np.arctan2(longaxis[0], longaxis[1])
     position = center[::-1]
     if ratio[0] is not None:
         eccentricity = ratio[1] / ratio[0]
     else:
         eccentricity = None
+    
     return position, unsigned_orientation, eccentricity         
     
 def extract_signed_orientation(img, prev_pos=None):
@@ -405,7 +509,7 @@ def extract_signed_orientation(img, prev_pos=None):
     
 
 
-def main(filename, start, end, saveimages=None):#'/home/caveman/DATA/tmp_orientation_checks/images'):
+def main(filename, start, end, saveimages='/home/caveman/DATA/tmp_orientation_checks/images'):
     orientation_frames = {}
     movie = ufmf.FlyMovieEmulator(filename)
     if end == -1:
@@ -421,8 +525,8 @@ def main(filename, start, end, saveimages=None):#'/home/caveman/DATA/tmp_orienta
             fstr = str(frame)+'.png'
             imname = os.path.join(saveimages, fstr)
             plt.imsave(imname, img)
-        
-        if np.min(img) < -50:
+            
+        if np.min(img) < -5:
             timestamp = movie.get_frame(frame)[1]
             prev_pos, orientation, eccentricity = extract_signed_orientation(img, prev_pos=prev_pos)
             framedata = {'frame': frame, 'timestamp': timestamp, 'orientation': orientation, 'eccentricity': eccentricity, 'position': prev_pos}
@@ -447,7 +551,7 @@ def process_ufmf(options):
     config = analysis_configuration.Config(options.path)
     orientation_frames = main(options.file, options.start, options.stop)
     
-    filename = 'DATA_' + os.path.basename(options.file).split('.')[0]
+    filename = 'tmp_' + 'DATA_' + os.path.basename(options.file).split('.')[0]
     ufmf_path = os.path.join(options.path, 'data', 'ufmfs')   
     filename_with_path = os.path.join(ufmf_path, filename) 
         
@@ -456,8 +560,40 @@ def process_ufmf(options):
     f.close()
 
 
+def plot_trajectory(path, orientation_datafile):
+    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(path, 'analysis_configuration.py'))
+    config = analysis_configuration.Config(path)
+    
+    culled_dataset_filename = os.path.join(path, config.culled_datasets_path, config.culled_dataset_name) 
+    dataset = fad.load(culled_dataset_filename)
+    keys = dataset.trajecs.keys()#fad.get_keys_with_attr(dataset, ['odor_stimulus'], ['on'])
 
+    figure_path = os.path.join(path, config.figure_path)
+    save_figure_path = os.path.join(figure_path, 'odor_traces/')
+    pdf_name_with_path = os.path.join(save_figure_path, 'body_orientation_trajectories.pdf')
+    pp = PdfPages(pdf_name_with_path)
 
+    ufmf_data = load_ufmf_data_from_dict(orientation_datafile)
+
+    for key in keys:
+        trajec = dataset.trajecs[key]
+        heading_for_hist, orientation_for_hist, eccentricity_for_hist, speed_for_hist, velocities, frames, ufmf_frames = get_heading_and_orientation(dataset, orientation_datafile, keys=[key], ufmf_data=ufmf_data)
+        if len(orientation_for_hist) > 20:
+            fig = plt.figure(figsize=(4,4))
+            ax = fig.add_subplot(111)
+            ax.set_xlim(-.1, .6)
+            ax.set_ylim(-1., .3)
+            ax.set_aspect('equal')
+            ax.set_title(key.replace('_', '-') + '-frames: ' + str(ufmf_frames[0]) + '-' + str(ufmf_frames[-1]))
+            
+            ax.plot(trajec.positions[frames[0]-10:frames[-1]+10,0], trajec.positions[frames[0]-10:frames[-1]+10,1], 'black', zorder=-100, linewidth=0.25)
+            fpl.colorline_with_heading(ax,trajec.positions[frames,0], trajec.positions[frames,1], eccentricity_for_hist, orientation=orientation_for_hist, colormap='jet', alpha=1, colornorm=[.1,.8], size_radius=0.15-np.abs(trajec.positions[frames,2]), size_radius_range=[.03, .03], deg=False, nskip=2, center_point_size=0.01, flip=False)
+            
+            
+            pp.savefig()
+            plt.close('all')
+
+    pp.close()
 
 
 if __name__ == '__main__':
@@ -489,9 +625,10 @@ if __name__ == '__main__':
         plot_eccentricity_vs_heading(options.path, options.orientation)
     elif options.action == 'orientation_vs_heading':
         plot_orientation_vs_heading(options.path, options.orientation)
-        
-        
-        
+    elif options.action == 'airspeed_slip':
+        plot_air_speed_slip_angles(options.path, options.orientation)
+    elif options.action == 'trajectories':
+        plot_trajectory(options.path, options.orientation)
         
     
     
