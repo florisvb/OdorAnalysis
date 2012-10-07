@@ -24,6 +24,9 @@ def prep_data(culled_dataset, path, config):
     # stuff like calculating angular velocity, saccades etc.
     keys = culled_dataset.trajecs.keys()
     
+    # save frame to key dict
+    fad.save_frame_to_key_dict(culled_dataset)
+    
     # fix time_fly (not necessary with new flydra_analysis_dataset code as of 8/15/2012
     print 'fixing time_fly'
     for key, trajec in culled_dataset.trajecs.items():
@@ -42,18 +45,23 @@ def prep_data(culled_dataset, path, config):
     else:
         fad.set_attribute_for_trajecs(culled_dataset, 'odor', False)
         
+    # WIND calcs
+    fad.iterate_calc_function(culled_dataset, tac.calc_airvelocity, keys, windvelocity=config.windvelocity) 
+    fad.iterate_calc_function(culled_dataset, tac.calc_airheading, keys) 
+        
     # VISION STUFF
     set_stimulus(culled_dataset, config, 'visual_stimulus')
         
-    # DISTANCE STUFF
-    print 'calculating distance to post and such'
-    fad.iterate_calc_function(culled_dataset, tac.calc_positions_normalized_by_speed, keys, normspeed=config.normspeed)  
-    fad.iterate_calc_function(culled_dataset, tac.calc_xy_distance_to_point, keys, config.post_center[0:2])  
-    fad.iterate_calc_function(culled_dataset, tac.calc_distance_to_post, keys, config.post_center, config.post_radius)
-    
-    # LANDING STUFF
-    print 'classifying landing vs not landing'
-    fad.iterate_calc_function(culled_dataset, tac.calc_post_behavior, keys, config.post_center, config.post_radius)
+    if config.post:
+        # DISTANCE STUFF
+        print 'calculating distance to post and such'
+        fad.iterate_calc_function(culled_dataset, tac.calc_positions_normalized_by_speed, keys, normspeed=config.normspeed)  
+        fad.iterate_calc_function(culled_dataset, tac.calc_xy_distance_to_point, keys, config.post_center[0:2])  
+        fad.iterate_calc_function(culled_dataset, tac.calc_distance_to_post, keys, config.post_center, config.post_radius)
+        
+        # LANDING STUFF
+        print 'classifying landing vs not landing'
+        fad.iterate_calc_function(culled_dataset, tac.calc_post_behavior, keys, config.post_center, config.post_radius)
     
     # SACCADES
     print 'calculating heading and saccades'
