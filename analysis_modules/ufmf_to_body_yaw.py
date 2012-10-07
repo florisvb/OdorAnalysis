@@ -366,7 +366,7 @@ def extract_unsigned_orientation_and_position(img):
     
     return position, unsigned_orientation, eccentricity         
     
-    
+
 def main(filename, start, end, saveimages=None):#='/home/caveman/DATA/tmp_orientation_checks/images'):
     orientation_frames = {}
     movie = ufmf.FlyMovieEmulator(filename)
@@ -401,12 +401,16 @@ def main(filename, start, end, saveimages=None):#='/home/caveman/DATA/tmp_orient
     return orientation_frames
 
 def process_ufmf(options):
-    analysis_configuration = imp.load_source('analysis_configuration', os.path.join(options.path, 'analysis_configuration.py'))
-    config = analysis_configuration.Config(options.path)
+
+    try:    
+        analysis_configuration = imp.load_source('analysis_configuration', os.path.join(options.path, 'analysis_configuration.py'))
+        config = analysis_configuration.Config(options.path)
+        ufmf_path = os.path.join(options.path, 'data', 'ufmfs')   
+    except:    
+        ufmf_path = ''    
     orientation_frames = main(options.file, options.start, options.stop)
     
     filename = 'tmp_' + 'DATA_' + os.path.basename(options.file).split('.')[0]
-    ufmf_path = os.path.join(options.path, 'data', 'ufmfs')   
     filename_with_path = os.path.join(ufmf_path, filename) 
         
     f = open(filename_with_path, 'w')
