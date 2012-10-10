@@ -281,7 +281,7 @@ def main(filename, start=0, end=-1, saveimages=None, frames_to_process='all'):#=
             imname = os.path.join(saveimages, fstr)
             plt.imsave(imname, img)
             
-        if np.min(img) < -5:
+        if np.min(img) < -7:
             timestamp = movie.get_frame(frame)[1]
             prev_pos, orientation, eccentricity = extract_unsigned_orientation_and_position(img)
             if orientation is not None:
