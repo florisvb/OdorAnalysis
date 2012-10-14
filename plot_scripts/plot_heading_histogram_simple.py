@@ -51,12 +51,6 @@ def calc_heading(velocities):
     heading = floris_math.fix_angular_rollover(heading_norollover)
     heading_smooth = floris_math.fix_angular_rollover(heading_norollover_smooth)
     
-    if 0:
-        flipm = np.where(heading_smooth < 0)[0]
-        flipp = np.where(heading_smooth > 0)[0]
-        
-        heading_smooth[flipm] += np.pi
-        heading_smooth[flipp] -= np.pi
         
     return heading_smooth
 
@@ -109,12 +103,6 @@ def get_headings(dataset, config, keys, odor_timerange=None, threshold_odor=10, 
         #headings.extend(trajec.heading_smooth[frames_to_use].tolist())
 
     headings = np.array(headings)
-    
-    headings_less_than_zero = np.where(headings < 0)[0]
-    headings_greater_than_zero = np.where(headings > 0)[0]
-    
-    headings[headings_less_than_zero] = headings[headings_less_than_zero] + np.pi
-    headings[headings_greater_than_zero] = headings[headings_greater_than_zero] - np.pi
     
     return headings    
     
@@ -273,7 +261,7 @@ def visual_motion(dataset, config, dataset_control, config_control):
             keys_odor_false.append(key)
     key_set = 'upwind'
     key_sets.setdefault(key_set, keys_odor_true)
-    heading = get_headings(dataset, config, keys_odor_true, velocity_adjustment=0)
+    heading = get_headings(dataset, config, keys_odor_true, odor_timerange=[0.5,5], velocity_adjustment=0)
     data.setdefault(key_set, heading)
     print key_set, len(keys_odor_true)
             
@@ -288,7 +276,7 @@ def visual_motion(dataset, config, dataset_control, config_control):
             keys_odor_false.append(key)
     key_set = 'downwind' 
     key_sets.setdefault(key_set, keys_odor_true)
-    heading = get_headings(dataset, config, keys_odor_true, velocity_adjustment=0)
+    heading = get_headings(dataset, config, keys_odor_true, odor_timerange=[0.5,5], velocity_adjustment=0)
     data.setdefault(key_set, heading)
     print key_set, len(keys_odor_true)
     
@@ -303,7 +291,7 @@ def visual_motion(dataset, config, dataset_control, config_control):
             keys_odor_false.append(key)
     key_set = 'none'
     key_sets.setdefault(key_set, keys_odor_true)
-    heading = get_headings(dataset_control, config_control, keys_odor_true)
+    heading = get_headings(dataset_control, config_control, keys_odor_true, odor_timerange=[0.5,5])
     data.setdefault(key_set, heading)
     print key_set, len(keys_odor_true)
     

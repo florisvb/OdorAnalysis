@@ -142,11 +142,17 @@ def pdf_book(config, dataset, save_figure_path=''):
         
         key_set = {}
         for odor_stimulus in config.odor_stimulus.keys():
-            keys = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=100, odor=odor)
+            #keys = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=100, odor=odor)
+            
+            keys = fad.get_keys_with_attr(dataset, 'odor_stimulus', odor_stimulus)
+            
             if len(keys) > 0:    
                 key_set.setdefault(odor_stimulus, keys)
 
         for odor_stimulus, keys in key_set.items():
+
+            '''
+
             print 'Odor Book, Chapter: ', odor_stimulus
             landers = fad.get_keys_with_attr(dataset, ['post_behavior'], ['landing'], keys=keys)
             boomerangs = fad.get_keys_with_attr(dataset, ['post_behavior'], ['boomerang'], keys=keys)
@@ -252,10 +258,11 @@ def pdf_book(config, dataset, save_figure_path=''):
                 trajec = dataset.trajecs[key]
                 trajec_lengths.append(trajec.length/trajec.fps)
             
-            
+            '''
             fig = plt.figure()
             figname = 'heatmap_' + odor_stimulus + '_odor_all_axes.pdf'
             title = 'odor ' + odor_stimulus 
+            '''
             if odor:
                 title += ' - All trajectories came within 10 cm of the post, and all experienced odor'
             else:
@@ -274,6 +281,8 @@ def pdf_book(config, dataset, save_figure_path=''):
             
             
             title += '\nMean trajectory length: ' + str(np.mean(trajec_lengths)) + ' +/- ' + str(np.std(trajec_lengths)) + ' sec'
+            
+            '''
             
             plot_all_heatmaps(config, dataset, save_figure_path=save_figure_path, figname=figname, title=title, keys=keys)
             pp.savefig()

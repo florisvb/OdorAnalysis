@@ -75,11 +75,6 @@ def plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimu
                     n += 1
                     
                     heading_prior_to_saccade = trajec.heading_smooth[sac[0]]
-                    # flip heading
-                    if heading_prior_to_saccade < 0:
-                        heading_prior_to_saccade += np.pi
-                    else:
-                        heading_prior_to_saccade -= np.pi
                         
                     #if np.abs(heading_prior_to_saccade) > 45*np.pi/180. and np.abs(heading_prior_to_saccade) < 135*np.pi/180.:
                     if np.abs(heading_prior_to_saccade) < 15*np.pi/180.:# and np.abs(heading_prior_to_saccade) < 135*np.pi/180.:

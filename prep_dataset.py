@@ -24,9 +24,6 @@ def prep_data(culled_dataset, path, config):
     # stuff like calculating angular velocity, saccades etc.
     keys = culled_dataset.trajecs.keys()
     
-    # save frame to key dict
-    fad.save_frame_to_key_dict(culled_dataset)
-    
     # fix time_fly (not necessary with new flydra_analysis_dataset code as of 8/15/2012
     print 'fixing time_fly'
     for key, trajec in culled_dataset.trajecs.items():
@@ -46,10 +43,12 @@ def prep_data(culled_dataset, path, config):
         fad.set_attribute_for_trajecs(culled_dataset, 'odor', False)
         
     # WIND calcs
+    print 'wind calculations'
     fad.iterate_calc_function(culled_dataset, tac.calc_airvelocity, keys, windvelocity=config.windvelocity) 
     fad.iterate_calc_function(culled_dataset, tac.calc_airheading, keys) 
         
     # VISION STUFF
+    print 'setting visual stimulus'
     set_stimulus(culled_dataset, config, 'visual_stimulus')
         
     if config.post:
@@ -65,9 +64,10 @@ def prep_data(culled_dataset, path, config):
     
     # SACCADES
     print 'calculating heading and saccades'
-    fad.iterate_calc_function(culled_dataset, tac.calc_velocities_normed)
+    #fad.iterate_calc_function(culled_dataset, tac.calc_velocities_normed)
     fad.iterate_calc_function(culled_dataset, tac.calc_heading)
     fad.iterate_calc_function(culled_dataset, tac.calc_saccades)
+        
         
     return    
     

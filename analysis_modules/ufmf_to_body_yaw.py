@@ -4,6 +4,7 @@ import pickle
 import imp
 
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib import patches
 
 import fly_plot_lib
 fly_plot_lib.set_params.pdf()
@@ -24,15 +25,35 @@ import numpy as np
 ##########################################################################################################
 # load and interpret data
 
+def get_keys_for_ufmf_frames(ufmf_frames, ufmf_frame_offset, frame_to_key):
+    
+    keys = []
+    keys_and_ufmf_frames = {}
+    for ufmf_frame in ufmf_frames:
+        flydra_frame = ufmf_frame + ufmf_frame_offset
+        if frame_to_key.has_key(flydra_frame):
+            keys_for_frame = frame_to_key[flydra_frame]
+            for key in keys_for_frame:
+                if key not in keys:
+                    keys.append(key)
+                    keys_and_ufmf_frames.setdefault(key, [ufmf_frame])
+                else:
+                    keys_and_ufmf_frames[key].append(ufmf_frame)
+    return keys, keys_and_ufmf_frames
+
 def get_ufmf_frame_offset(dataset, ufmf_frames, ufmf_timestamps, npts=25):
     # find frames where difference < 0.008
     frame_offsets = []
     
     n = 0
+    smallest_tdiff = 100000
     for key in dataset.trajecs.keys():
         trajec = dataset.trajecs[key]
         for f, t in enumerate(trajec.timestamp_epoch + trajec.time_fly):
             tdiff = np.abs(t - np.array(ufmf_timestamps))
+            if np.min(tdiff) < smallest_tdiff:
+                smallest_tdiff = np.min(tdiff)
+                print smallest_tdiff
             if np.min(tdiff) < 0.008:
                 n += 1
                 if n > npts:
@@ -67,7 +88,7 @@ def get_keys_in_volume_for_camera_frame(camera_frame, frame_to_key, dataset):
         camera_frames = (trajec.first_frame + np.arange(0, trajec.length)).tolist()
         index = camera_frames.index(camera_frame)
         pos = trajec.positions[index]
-        in_volume = is_position_in_volume(pos, [-.1,.2], [-.15,.15], [-.1,.1])
+        in_volume = is_position_in_volume(pos, [-.2,.3], [-.18,.18], [-.18,.18])
         if in_volume:
             keys_in_volume.append(key)
     return keys_in_volume
@@ -104,28 +125,24 @@ def load_ufmf_data_from_dict(orientation_datafile):
     data = pickle.load(datafile)
     
     timestamp = []
-    orientation = []
+    longaxis = []
     eccentricity = []
     ufmf_frames = []
-    x = []
-    y = []
+    position = []
     for frame in data.keys():
         framedata = data[frame]
         if framedata is not None:
             timestamp.append(framedata['timestamp'])
-            orientation.append(framedata['orientation'])
+            longaxis.append(framedata['longaxis'])
             eccentricity.append(framedata['eccentricity'])
             ufmf_frames.append(frame)
-            x.append(framedata['position'][0])
-            y.append(framedata['position'][1])
+            position.append(framedata['position'])
             
     timestamp_ufmf = np.array(timestamp)
-    orientation_ufmf = np.array(orientation)
+    #longaxis_ufmf = np.array(longaxis)
     eccentricity_ufmf = np.array(eccentricity)
     ufmf_frames_ufmf = ufmf_frames
-    x = np.array(x)
-    y = np.array(y)
-    return timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf, x, y
+    return timestamp_ufmf, longaxis, eccentricity_ufmf, ufmf_frames_ufmf, position
     
     
 def load_ufmf_data_from_dict_list(orientation_datafile_list):
@@ -162,9 +179,9 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
     '''
 
     if ufmf_data is None:
-        timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf, x, y = load_ufmf_data_from_dict(orientation_datafile)
+        timestamp_ufmf, longaxis, eccentricity, ufmf_frames_ufmf, center = load_ufmf_data_from_dict(orientation_datafile)
     else:
-        timestamp_ufmf, orientation_ufmf, eccentricity_ufmf, ufmf_frames_ufmf, x, y = ufmf_data
+        timestamp_ufmf, longaxis, eccentricity, ufmf_frames_ufmf, center = ufmf_data
     
     print 'getting ufmf frame offset'
     ufmf_frame_offset = get_ufmf_frame_offset(dataset, ufmf_frames_ufmf, timestamp_ufmf, npts=25)
@@ -180,8 +197,7 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
             trajec.orientation = []
             trajec.eccentricity = []
             trajec.frames_with_orientation = []
-            trajec.orientation_x = []
-            trajec.orientation_y = []
+            trajec.orientation_center = []
             trajec.ufmf_frame_offset = ufmf_frame_offset
             
     if frame_to_key is None:
@@ -193,9 +209,9 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
             
         flydra_camera_frame = ufmf_frame_offset + camera_frame
             
-        if eccentricity_ufmf[ufmf_index] is None:
+        if eccentricity[ufmf_index] is None:
             continue
-        if eccentricity_ufmf[ufmf_index] > 1:
+        if eccentricity[ufmf_index] > 1:
             continue
         try:
             possible_keys = frame_to_key[flydra_camera_frame]
@@ -213,7 +229,7 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
         fly_frame = flydra_camera_frame - trajec.first_frame
             
         # fix orientation for airvelocity
-        unsigned_orientation = orientation_ufmf[ufmf_index]
+        unsigned_orientation = np.arctan2(longaxis[ufmf_index][0]*-1, longaxis[ufmf_index][1]) #orientation_ufmf[ufmf_index]
         velocity_heading = trajec.airheading_smooth[fly_frame]
         orientation = unsigned_orientation
         if 1:
@@ -237,10 +253,10 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
         
         # save data to trajec
         trajec.orientation.append(orientation)
-        trajec.eccentricity.append(eccentricity_ufmf[ufmf_index])
+        trajec.eccentricity.append(eccentricity[ufmf_index])
         trajec.frames_with_orientation.append(fly_frame)
-        trajec.orientation_x.append(x[ufmf_index])
-        trajec.orientation_y.append(y[ufmf_index])
+        trajec.orientation_center.append(center[ufmf_index])
+        print key
         
     return
 
@@ -248,18 +264,27 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
 # Process UFMF
 
 def extract_unsigned_orientation_and_position(img):
-    center, longaxis, shortaxis, body, ratio = nim.find_ellipse(img, background=None, threshrange=[-100,-7], sizerange=[10,500], erode=2, autothreshpercentage=None)
-    unsigned_orientation = np.arctan2(longaxis[0], longaxis[1])
-    position = center[::-1]
+    center, longaxis, shortaxis, body, ratio = nim.find_ellipse(img, background=None, threshrange=[-100,-15], sizerange=[10,500], erode=2, autothreshpercentage=None)
+    
     if ratio[0] is not None:
         eccentricity = ratio[1] / ratio[0]
     else:
         eccentricity = None
+        
+    return center, longaxis, eccentricity
     
-    return position, unsigned_orientation, eccentricity         
+    if 0:
+        unsigned_orientation = np.arctan2(longaxis[0], longaxis[1])
+        position = center[::-1]
+        if ratio[0] is not None:
+            eccentricity = ratio[1] / ratio[0]
+        else:
+            eccentricity = None
+        
+        return position, unsigned_orientation, eccentricity         
     
 
-def main(filename, start=0, end=-1, saveimages=None, frames_to_process='all'):#='/home/caveman/DATA/tmp_orientation_checks/images'):
+def main(filename, start=0, end=-1, frames_to_process='all'):
     orientation_frames = {}
     movie = ufmf.FlyMovieEmulator(filename)
     if end == -1:
@@ -276,18 +301,13 @@ def main(filename, start=0, end=-1, saveimages=None, frames_to_process='all'):#=
             print frame
         img = -1*(movie.get_mean_for_timestamp(movie.get_frame(frame)[1]) - movie.get_frame(frame)[0])
         
-        if saveimages is not None:
-            fstr = str(frame)+'.png'
-            imname = os.path.join(saveimages, fstr)
-            plt.imsave(imname, img)
-            
-        if np.min(img) < -7:
+        if np.min(img) < -20:
             timestamp = movie.get_frame(frame)[1]
-            prev_pos, orientation, eccentricity = extract_unsigned_orientation_and_position(img)
-            if orientation is not None:
-                print frame, orientation, eccentricity
+            position, longaxis, eccentricity = extract_unsigned_orientation_and_position(img)
+            if eccentricity is not None:
+                print frame
             
-            framedata = {'frame': frame, 'timestamp': timestamp, 'orientation': orientation, 'eccentricity': eccentricity, 'position': prev_pos}
+            framedata = {'frame': frame, 'timestamp': timestamp, 'longaxis': longaxis, 'eccentricity': eccentricity, 'position': position}
             orientation_frames.setdefault(frame, framedata)
         else:
             framedata = None
@@ -423,12 +443,17 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     img_directory = '/home/caveman/DATA/tmp_orientation_checks/images'
     ufmf_filename = '/home/caveman/DATA/20120924_HCS_odor_horizon/data/ufmfs/small_20121002_184626_Basler_21111538.ufmf'
     '''
+    # get x/y limits (from image)
+    img = flyanim.get_nth_image_from_directory(0, img_directory)
+    xlim = [0, img.shape[1]]
+    ylim = [0, img.shape[0]]
+    
+    
     if keys is None:
         keys = dataset.trajecs.keys()
 
     orientation = []
-    x = []
-    y = []
+    center = []
     ufmf_frames = []
 
     n = -1
@@ -444,9 +469,14 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
             break
         print n
         orientation.extend(trajec.orientation)
-        x.extend(trajec.orientation_x)
-        y.extend(trajec.orientation_y)
+        center.extend(trajec.orientation_center)
         ufmf_frames.extend( (np.array(trajec.frames_with_orientation) + trajec.first_frame - trajec.ufmf_frame_offset).tolist())
+    
+    x = []
+    y = []
+    for c in center:
+        x.append(c[1])
+        y.append(img.shape[0] - c[0])
     
     print 'first ufmf frame: ', ufmf_frames[0]
     print 'n frames: ', len(ufmf_frames)
@@ -461,8 +491,8 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     # check to make sure we have same number of images as data points
     images = flyanim.get_image_file_list(img_directory)
     print 'n images: ', len(images)
-    print 'n data pts: ', len(x)
-    assert(len(images)==len(x))
+    print 'n data pts: ', len(orientation)
+    assert(len(images)==len(orientation))
             
     # optional parameters
     color = 'none'
@@ -471,11 +501,6 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     nskip = 0
     wedge_radius = 25
     imagecolormap = 'gray'
-    
-    # get x/y limits (from image)
-    img = flyanim.get_nth_image_from_directory(0, img_directory)
-    xlim = [0, img.shape[1]]
-    ylim = [0, img.shape[0]]
     
     if len(save_movie_path) > 0:
         save = True
@@ -490,7 +515,7 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     print orientation
             
     # play the movie!
-    flyanim.play_movie(x, y, color=color, images=img_directory, orientation=orientation, save=save, save_movie_path=save_movie_path, nskip=nskip, ghost_tail=ghost_tail, wedge_radius=wedge_radius, xlim=xlim, ylim=ylim, imagecolormap=imagecolormap, edgecolor=edgecolor, flipimgx=False, flipimgy=False, flip=False)
+    flyanim.play_movie(x, y, color=color, images=img_directory, orientation=orientation, save=save, save_movie_path=save_movie_path, nskip=nskip, ghost_tail=ghost_tail, wedge_radius=wedge_radius, xlim=xlim, ylim=ylim, imagecolormap=imagecolormap, edgecolor=edgecolor, flipimgx=True, flipimgy=False, flip=False)
 
 #############################################################################################################################3
 # Plot trajectories
@@ -550,7 +575,33 @@ def plot_trajectory(dataset, config):
     pp.close()
     
     
+def save_raw_orientation_data_images(orientation_datafile, ufmf_filename, destination):
+
+    timestamp, longaxis, eccentricity, ufmf_frames, center = load_ufmf_data_from_dict(orientation_datafile)
+    movie = ufmf.FlyMovieEmulator(ufmf_filename)
     
+    for f, frame in enumerate(ufmf_frames):
+        if eccentricity[f] is None:
+            print frame, ' no data'
+            continue
+        else:
+            print frame
+        
+        img = -1*(movie.get_mean_for_timestamp(movie.get_frame(frame)[1]) - movie.get_frame(frame)[0])
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.imshow(img)
+        
+        circle = patches.Circle((center[f][1], center[f][0]), 1, facecolor='white', edgecolor='none')
+        ax.add_artist(circle)
+        ax.plot([center[f][1]-longaxis[f][1]*5, center[f][1]+longaxis[f][1]*5], [center[f][0]-longaxis[f][0]*5, center[f][0]+longaxis[f][0]*5], zorder=10, color='white')
+        
+        figname = os.path.join(destination, str(f) + '_' + str(frame)) + '.png'
+        fig.savefig(figname, format='png')
+        plt.close('all')
+            
+            
 
 if __name__ == '__main__':
     parser = OptionParser()

@@ -77,19 +77,9 @@ def plot_odor_heading_book(pp, threshold_odor, path, config, dataset, odor_stimu
                     if axis == 'xy':
                         angle_of_saccade = tac.get_angle_of_saccade(trajec, next_sac)
                         heading_prior_to_saccade = trajec.heading_smooth[next_sac[0]]
-                        # flip heading
-                        if heading_prior_to_saccade < 0:
-                            heading_prior_to_saccade += np.pi
-                        else:
-                            heading_prior_to_saccade -= np.pi
                     elif axis == 'altitude':
                         angle_of_saccade = tac.get_angle_of_saccade_z(trajec, next_sac)
                         heading_prior_to_saccade = trajec.heading_altitude_smooth[next_sac[0]]
-                        # flip heading
-                        if heading_prior_to_saccade < 0:
-                            heading_prior_to_saccade += np.pi
-                        else:
-                            heading_prior_to_saccade -= np.pi
                     
                         
                     saccade_angles_after_odor.append(angle_of_saccade)
