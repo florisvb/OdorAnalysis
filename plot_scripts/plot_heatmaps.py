@@ -144,7 +144,17 @@ def pdf_book(config, dataset, save_figure_path=''):
         for odor_stimulus in config.odor_stimulus.keys():
             #keys = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=100, odor=odor)
             
-            keys = fad.get_keys_with_attr(dataset, 'odor_stimulus', odor_stimulus)
+            keys_tmp = fad.get_keys_with_attr(dataset, 'odor_stimulus', odor_stimulus)
+            keys = []
+            
+            for key in keys_tmp:
+                trajec = dataset.trajecs[key]
+                if odor:
+                    if np.max(trajec.odor) > 10:
+                        keys.append(key)
+                else:
+                    if np.max(trajec.odor) < 10:
+                        keys.append(key)
             
             if len(keys) > 0:    
                 key_set.setdefault(odor_stimulus, keys)

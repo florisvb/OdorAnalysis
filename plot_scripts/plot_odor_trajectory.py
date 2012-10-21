@@ -133,14 +133,15 @@ def plot_odor_traces_book(path, config, dataset, keys=None, show_saccades=True, 
         
         title_text = key.replace('_', '-')
         trajec = dataset.trajecs[key]
-        behavior_text = ''
-        for behavior in trajec.post_behavior:
-            behavior_text += behavior + ', '
-        if len(behavior_text) > 0:
-            title_text += ' -- behavior: ' + behavior_text
-        
-        title_text += 'visual: ' + trajec.visual_stimulus
-        
+        if 0:
+            behavior_text = ''
+            for behavior in trajec.post_behavior:
+                behavior_text += behavior + ', '
+            if len(behavior_text) > 0:
+                title_text += ' -- behavior: ' + behavior_text
+            
+            title_text += 'visual: ' + trajec.visual_stimulus
+            
         plt.suptitle(title_text.strip())
         pp.savefig()
         plt.close('all')
@@ -284,13 +285,14 @@ def pdf_book(config, dataset, save_figure_path=''):
         figure_path = os.path.join(config.path, config.figure_path)
         save_figure_path=os.path.join(figure_path, 'odor_traces/')
 
-    threshold_odor=50
+    threshold_odor=10
         
     for odor in [True, False]:
         
         key_set = {}
         for odor_stimulus in config.odor_stimulus.keys():
-            keys_tmp = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=0.1, odor=odor)
+            #keys_tmp = opa.get_keys_with_odor_before_post(config, dataset, threshold_odor=threshold_odor, odor_stimulus=odor_stimulus, threshold_distance_min=0.1, odor=odor)
+            keys_tmp = fad.get_keys_with_attr(dataset, 'odor_stimulus', odor_stimulus)
             
             keys = []
             for key in keys_tmp:
@@ -300,7 +302,7 @@ def pdf_book(config, dataset, save_figure_path=''):
                     add_key = False
                 if odor:
                     frames_in_odor = np.where(trajec.odor > threshold_odor)[0]
-                    if len(frames_in_odor) < 40:
+                    if len(frames_in_odor) < 20:
                         add_key = False
                 if add_key:
                     keys.append(key)
@@ -319,7 +321,7 @@ def pdf_book(config, dataset, save_figure_path=''):
                 
             book_name = 'odor_trace_book_' + odor_stimulus + '_' + str(odor) + '.pdf'
                 
-            plot_odor_traces_book(config.path, config, dataset, keys=keys_to_plot, show_saccades=True, frames_to_show_before_odor='all', frames_to_show_after_odor='all', odor_multiplier=1, book_name=book_name)
+            plot_odor_traces_book(config.path, config, dataset, keys=keys_to_plot, show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', odor_multiplier=1, book_name=book_name)
 
 
 if __name__ == '__main__':

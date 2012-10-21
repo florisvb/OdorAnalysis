@@ -22,7 +22,7 @@ import copy
 import numpy as np
 
 
-def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=None):
+def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=None, odor=None, threshold_odor=10, eccentricity_threshold=0.7):
 
     threshold_odor = 10
     key_sets = {}
@@ -31,6 +31,22 @@ def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=
         keys_odor = fad.get_keys_with_attr(dataset, ['odor_stimulus', 'visual_stimulus'], [odor_stimulus, visual_stimulus])
     else:
         keys_odor = dataset.trajecs.keys()
+        
+    if odor is None:
+        keys = keys_odor
+    else:
+        if odor is True:
+            keys = []
+            for key in keys_odor:
+                trajec = dataset.trajecs[key]
+                if np.max(trajec.odor) > threshold_odor:
+                    keys.append(key)
+        elif odor is False:
+            keys = []
+            for key in keys_odor:
+                trajec = dataset.trajecs[key]
+                if np.max(trajec.odor) < threshold_odor:
+                    keys.append(key)
 
     orientations = []
     eccentricities = []
@@ -38,8 +54,6 @@ def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=
     groundheadings = []
     speeds = []
     airspeeds = []
-    
-    keys = keys_odor
     
     for key in keys:
         trajec = dataset.trajecs[key]
@@ -63,7 +77,9 @@ def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=
                     continue
                 if np.abs(trajec.velocities[f,2]) > 0.25:
                     continue
-                if trajec.eccentricity[i] > 0.9:
+                if trajec.eccentricity[i] > eccentricity_threshold:
+                    continue
+                if len(trajec.frames_with_orientation) < 10:
                     continue
                 
             frames_to_use.append(f)
@@ -89,8 +105,8 @@ def get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=
     return orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds
     
 
-def plot_orientation_airheading_groundheading(dataset, config, visual_stimulus='none', odor_stimulus='on'):
-    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus)
+def plot_orientation_airheading_groundheading(dataset, config, visual_stimulus='none', odor_stimulus='on', odor=True):
+    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus, odor=odor)
     
     data = {'orientation': orientations, 'airheadings': airheadings, 'groundheadings': groundheadings}
     #data = {'orientation': orientations-airheadings, 'airheadings': orientations-groundheadings, 'groundheadings': groundheadings}
@@ -98,8 +114,8 @@ def plot_orientation_airheading_groundheading(dataset, config, visual_stimulus='
 
     make_histograms(config, data, color)
     
-def plot_slipangles(dataset, config, visual_stimulus='none', odor_stimulus='on'):
-    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus)
+def plot_slipangles(dataset, config, visual_stimulus='none', odor_stimulus='on', odor=True):
+    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus, odor=odor, eccentricity_threshold=0.8)
     
     airslip = airheadings - orientations
     groundslip = groundheadings - orientations
@@ -138,8 +154,8 @@ def plot_slipangles(dataset, config, visual_stimulus='none', odor_stimulus='on')
     fig.savefig(fig_name_with_path, format='pdf')
 
 
-def plot_orientation_vs_groundheading(dataset, config, odor_stimulus='on'):
-    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus)
+def plot_orientation_vs_groundheading(dataset, config, odor_stimulus='on', odor=True):
+    orientations, airheadings, groundheadings, eccentricities, speeds, airspeeds = get_orientation_data(dataset, config, visual_stimulus='none', odor_stimulus=odor_stimulus, odor=odor)
     
     fig = plt.figure()
     ax = fig.add_subplot(111)
