@@ -222,33 +222,38 @@ def plot_odor_trace_on_ax(path, config, dataset, keys=None, axis='xy', show_sacc
         frames_where_odor = np.where(trajec.odor > 10)[0]
         #frames_where_odor = hf.find_continuous_blocks(frames_where_odor, 5, return_longest_only=True)
         
-        if frameranges is not None:
-            if frameranges.has_key(key):
-                frames = np.arange(frameranges[key][0], frameranges[key][-1])
+        if 0:
+            frames = None
+            if frameranges is not None:
+                if frameranges.has_key(key):
+                    frames = np.arange(frameranges[key][0], frameranges[key][-1])
+                    autoframerange = False
+                else:
+                    autoframerange = True
+            else:
                 autoframerange = False
-            else:
-                autoframerange = True
-        else:
-            autoframerange = True
-        if autoframerange:
-            if frames_to_show_before_odor == 'all':
-                frame0 = 0
-            else:
-                frame0 = np.min(frames_where_odor) - frames_to_show_before_odor
-                frame0 = np.max([frame0, 0])
-            if frames_to_show_after_odor == 'all':
-                frame1 = trajec.length
-            else:
-                frame1 = np.argmax(trajec.odor) + frames_to_show_after_odor
-                frame1 = np.min([trajec.length, frame1])
-            frames = np.arange(frame0, frame1)
-        
+            if autoframerange:
+                if frames_to_show_before_odor == 'all':
+                    frame0 = 0
+                else:
+                    frame0 = np.min(frames_where_odor) - frames_to_show_before_odor
+                    frame0 = np.max([frame0, 0])
+                if frames_to_show_after_odor == 'all':
+                    frame1 = trajec.length
+                else:
+                    frame1 = np.argmax(trajec.odor) + frames_to_show_after_odor
+                    frame1 = np.min([trajec.length, frame1])
+                frames = np.arange(frame0, frame1)
+            elif frames is None:
+                frames = np.arange(0,trajec.length)
+        frames = np.arange(0,trajec.length)
         
         tac.calc_heading_for_axes(trajec, axis=axis)
         orientation = trajec.__getattribute__('heading_smooth_'+axis)
         
         fpl.colorline_with_heading(ax,trajec.positions[frames,axes[0]], trajec.positions[frames,axes[1]], c[frames]*odor_multiplier, orientation=orientation[frames], colormap=colormap, alpha=alpha, colornorm=norm, size_radius=0.15-np.abs(trajec.positions[frames,depth]), size_radius_range=[0.003, .025], deg=False, nskip=2, center_point_size=0.01)
-        #fpl.colorline(ax,trajec.positions[frames,axes[0]], trajec.positions[frames,axes[1]], c[frames]*odor_multiplier, colormap=colormap, alpha=alpha)
+        
+        #fpl.colorline_with_heading(ax,trajec.positions[frames,axes[0]], trajec.positions[frames,axes[1]], c[frames]*odor_multiplier, orientation=orientation[frames], colormap=colormap, alpha=alpha, colornorm=norm, size_radius=0.15-np.abs(trajec.positions[frames,depth]), size_radius_range=[0.02, .02], deg=False, nskip=4, center_point_size=0.01, show_centers=False)
         
         if show_start:
             start = patches.Circle( (trajec.positions[frames[0],axes[0]], trajec.positions[frames[0],axes[1]]), radius=0.004, facecolor='green', edgecolor='none', linewidth=0, alpha=1, zorder=zorder+1)
@@ -306,6 +311,10 @@ def pdf_book(config, dataset, save_figure_path=''):
             
             keys = []
             for key in keys_tmp:
+                if '20120924' in key or '20120925' in key:
+                    pass
+                else:
+                    continue
                 trajec = dataset.trajecs[key]
                 add_key = True
                 if trajec.positions[0,0] < 0.3:

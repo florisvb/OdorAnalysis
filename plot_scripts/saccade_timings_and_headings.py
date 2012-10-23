@@ -5,6 +5,7 @@ from optparse import OptionParser
 import fly_plot_lib
 fly_plot_lib.set_params.pdf()
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib import patches
 
 import fly_plot_lib.plot as fpl
 import fly_plot_lib.flymath as flymath
@@ -89,7 +90,7 @@ def get_frame_chunks_relative_to_odor(trajec, threshold_odor=10, framerange=None
             
         if frame_left_timer is not None:
             frame_left_timer += 1
-        if frame_left_timer >= 50:
+        if frame_left_timer >= 5:
             frame_chunks_prior_odor.setdefault(frame_entered, copy.copy(frames_prior))
             frames_prior = []
             frame_left_timer = None
@@ -116,8 +117,10 @@ def get_attribute_and_time_relative_to_odor(trajec, threshold_odor=10, attribute
         
     n = 0
     for frame_rel, frame_chunk in chunks.items():
-        if n == 0:
-            pass
+        
+        # add some frames to the frame chunk
+        last_frame_to_add = np.min([trajec.length, frame_chunk[-1]+100])
+        frame_chunk.extend(np.arange(frame_chunk[-1], last_frame_to_add).tolist())
             
         if 0:
             if relative_to=='entry':
@@ -126,7 +129,7 @@ def get_attribute_and_time_relative_to_odor(trajec, threshold_odor=10, attribute
                 if np.mean(np.abs(trajec.heading_smooth[frame_rel-30:frame_rel])) < 40*np.pi/180.:
                     continue
                 
-        if n >= 1:        
+        if 1:        
             for f in frame_chunk:
                 #headings.append(trajec.heading_smooth[f])
 
@@ -152,6 +155,8 @@ def get_attribute_and_time_relative_to_odor(trajec, threshold_odor=10, attribute
                     val = heading_smooth[f]
                 elif attribute == 'speed':
                     val = trajec.speed[f]
+                elif attribute == 'odor':
+                    val = trajec.odor[f]
                     
                 elif attribute == 'heading_smooth_diff':
                     val = trajec.heading_smooth_diff[f]
@@ -216,103 +221,132 @@ def plot_heading_time_to_odor_on_ax(ax, dataset, keys=None, threshold_odor=10, a
     fpl.histogram2d(ax, attribute_vals_after, time_after, bins=(binsx, binsy), logcolorscale=True)
     
 def plot_heading_time_to_odor_for_trajec_on_ax(ax, trajec, threshold_odor=10, attribute='heading_smooth', column=0, relative_to='entry', framerange=None):
-        attribute, relative_time = get_attribute_and_time_relative_to_odor(trajec, threshold_odor=threshold_odor, attribute=attribute, column=column, relative_to=relative_to, framerange=framerange)
+        heading, relative_time = get_attribute_and_time_relative_to_odor(trajec, threshold_odor=threshold_odor, attribute='heading_smooth', column=column, relative_to=relative_to, framerange=framerange)
+        odor, relative_time = get_attribute_and_time_relative_to_odor(trajec, threshold_odor=threshold_odor, attribute='odor', column=column, relative_to=relative_to, framerange=framerange)
+        
         if len(relative_time) < 10:
             return
-        time_chunks, attribute_chunks, breakpoints = flymath.get_continuous_chunks(relative_time, attribute, jump=0.02)
+            
+        time_chunks, heading_chunks, breakpoints = flymath.get_continuous_chunks(relative_time, heading, jump=0.02)
+        time_chunks, odor_chunks, breakpoints = flymath.get_continuous_chunks(relative_time, odor, jump=0.02)
+        
         print trajec.key
         
         for i, relative_time in enumerate(time_chunks):
             print i
-            attribute_vals = np.array(attribute_chunks[i])
+            heading_vals = np.array(heading_chunks[i])
+            odor_vals = np.array(odor_chunks[i])
             relative_time = np.array(relative_time)
             
             # handle time before odor
             indices = np.where(relative_time<0)[0]
-            attribute_vals_prior = attribute_vals[indices]
+            heading_vals_prior = heading_vals[indices]
+            odor_vals_prior = odor_vals[indices]
             time_prior = relative_time[indices]
             time_prior = -1*np.log(-1*time_prior + 1)
             # handle time after odor
             indices = np.where(relative_time>0)[0]
-            attribute_vals_after = attribute_vals[indices]
+            heading_vals_after = heading_vals[indices]
+            odor_vals_after = odor_vals[indices]
             time_after = relative_time[indices]
             time_after = np.log(time_after + 1)
             
             # merge them
             time_merged = np.hstack((time_prior, time_after))
-            attribute_vals_merged = np.hstack((attribute_vals_prior, attribute_vals_after))
+            heading_vals_merged = np.hstack((heading_vals_prior, heading_vals_after))
+            odor_vals_merged = np.hstack((odor_vals_prior, odor_vals_after))
             
-            time_merged, attribute_vals_merged = flymath.remove_discontinuities(time_merged, attribute_vals_merged, jump=2)
-            ax.plot(attribute_vals_merged, time_merged)
+            #time_merged, heading_vals_merged = flymath.remove_discontinuities(time_merged, attribute_vals_merged, jump=2)
+            #ax.plot(attribute_vals_merged, time_merged)
+            
+            heading_vals_merged_chunked, time_merged, breakpoints = flymath.get_continuous_chunks(heading_vals_merged, time_merged, jump=3)
+            heading_vals_merged_chunked, odor_vals_merged, breakpoints = flymath.get_continuous_chunks(heading_vals_merged, odor_vals_merged, jump=3)
+            
+            alpha = 0.3
+            if relative_to == 'entry':
+                if i==2: #i==len(time_chunks)-1:
+                    alpha = 1
+            if relative_to == 'exit':
+                if i==len(time_chunks)-1-5:
+                    alpha = 1
+            
+            for i in range(len(heading_vals_merged_chunked)):
+                fpl.colorline(ax, np.array(heading_vals_merged_chunked[i])*180/np.pi, np.array(time_merged[i]), np.array(odor_vals_merged[i]), norm=[0,100], alpha=alpha)
 
 def plot_heading_time_to_odor_relative_for_trajec(config, dataset, keys, attribute='heading_smooth', column=0, relative_to='entry', threshold_odor=10, framerange=None):
 
-    fig = plt.figure(figsize=(10,8))
+    # trajec = dataset.trajecs['20120925_180149_8143']
+    # frameranges: [900,1000], [900,1100], [900,1300]
+
+    fig = plt.figure(figsize=(6,5))
     fig.subplots_adjust(hspace=0.2, wspace=0.2)
     
     if attribute == 'heading_smooth':
-        xlim = [-np.pi, np.pi]
+        xlim = [-180,180]
         ylim = [-1*np.log(10), np.log(10)]
-        xticks = [-np.pi, -np.pi/2., 0, np.pi/2., np.pi]
-        xticklabels = [-180,-90,0,90,180]
-        xlabel = 'heading'
-    elif attribute == 'velocities':
-        xlim = [-1.5, 1.5]
-        ylim = [-1*np.log(10), np.log(10)]
-        xticks = [-1.5, 0, 1.5]
-        xticklabels = [-1.5, 0, 1.5]
-        xlabel = 'vertical velocity'
-    elif attribute == 'speed':
-        xlim = [-1, 1]
-        ylim = [-1*np.log(10), np.log(10)]
-        xticks = [-1, 0, 1]
-        xticklabels = [-1, 0, 1]
-        xlabel = 'speed'
-    elif attribute == 'heading_smooth_diff':
-        print attribute
-        xlim = [-1500*np.pi/180, 1500*np.pi/180]
-        ylim = [-1*np.log(10), np.log(10)]
-        xticks = [-1500*np.pi/180, 0, 1500*np.pi/180]
-        xticklabels = [-1500, 0, 1500]
-        xlabel = 'angular velocity'
+        xticks = [-180, -90, 0, 90, 180]
+        xticklabels = ['-180', '-90', 'upwind', '90', '180']
+        xlabel = 'heading, deg'
     else:
         print 'Choose a valid attribute!'
         
-    ax = fig.add_subplot(111)
+    trajec = dataset.trajecs[keys[0]]
+        
+    ax = fig.add_axes([0.15,0.65,0.8,0.3])
     
-    if 0:
-        yticks_neg = [-9,-8,-7,-6,-5,-4,-3,-2,-1,0]
-        yticks_neg = -1*np.log(-1*np.array(yticks_neg)+1)
-        yticks_pos = [1,2,3,4,5,6,7,8,9]
-        yticks_pos = np.log(np.array(yticks_pos)+1)
-        yticks = yticks_neg.tolist()
-        yticks.extend(yticks_pos.tolist())
-        ytick_labels = [-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9]
+    tmp = copy.copy(trajec)
+    tac.calc_heading_for_axes(tmp, axis='xy')
+    orientation = tmp.__getattribute__('heading_smooth_'+'xy')
+    
+    if framerange is None:
+        framerange = [0, -1]
+    
+    fpl.colorline_with_heading(ax, trajec.positions[framerange[0]:framerange[-1],0], trajec.positions[framerange[0]:framerange[-1],1], trajec.odor[framerange[0]:framerange[-1]], orientation[framerange[0]:framerange[-1]], size_radius=0.025, nskip=2, colornorm=[0,100], deg=False, show_centers=False, alpha=1)
+    
+    arrow = patches.Arrow(0, 0.1, 0.2, 0, width=.02, linewidth=0, color='black', edgecolor='none')
+    ax.add_artist(arrow)
+    ax.text(0,0.11,'wind direction', verticalalignment='bottom')
+    
+    ax.set_xlim([-.2,1])
+    ax.set_ylim([-.15,.15])
+    ax.set_aspect('equal')
+    fpl.adjust_spines(ax, ['left', 'bottom'], xticks=[-.2,0,1], yticks=[-.15,0,.15])
+    ax.set_ylabel('y postion, m')
+    ax.set_xlabel('x postion, m')
+    
     if 1:
-        yticks = [-np.log(2),0,np.log(2)]
-        ytick_labels = [-2,0,2]
-        ylim = [-np.log(2),np.log(2)]
-    
-    
-    for key in keys:
-        trajec = dataset.trajecs[key]
-        plot_heading_time_to_odor_for_trajec_on_ax(ax, trajec, threshold_odor=threshold_odor, attribute=attribute, column=column, relative_to=relative_to, framerange=framerange)
-    
-    ax.set_aspect('auto')
-    #ax.set_ylim(ylim[0], ylim[1])
-    
-    fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=yticks)
-    ax.set_xticklabels(xticklabels)
-    ax.set_yticklabels(ytick_labels)
-    ax.set_xlabel(xlabel)
-    
-    if relative_to == 'entry':
-        ax.set_ylabel('time relative to odor entry, sec')
-    else:
-        ax.set_ylabel('time relative to odor exit, sec')
-    
-    ax.set_aspect('auto')
-    ax.set_title(str(trajec.key).replace('_','-'))
+        print 'framerange: ', framerange
+        if 1:
+            yticks = [-np.log(2),0,np.log(2), np.log(3)]
+            ytick_labels = [-1,0,1,2]
+            ylim = [-np.log(2),np.log(3)]
+            
+        ax = fig.add_axes([.15,.1,.3,.4])
+        plot_heading_time_to_odor_for_trajec_on_ax(ax, trajec, threshold_odor=threshold_odor, attribute=attribute, column=column, relative_to='entry', framerange=framerange)
+        ax.hlines(0,-180,180,linestyles='dotted',linewidth=0.5)
+        ax.set_aspect('auto')
+        ax.set_ylim(ylim[0], ylim[1])
+        ax.set_xlim(xlim[0], xlim[1])
+        fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=yticks)
+        ax.set_xticklabels(xticklabels)
+        ax.set_yticklabels(ytick_labels)
+        ax.set_xlabel(xlabel)
+        ax.set_aspect('auto')
+        ax.set_ylabel('time relative to entering odor plume, sec')
+        
+        ax = fig.add_axes([.6,.1,.3,.4])
+        plot_heading_time_to_odor_for_trajec_on_ax(ax, trajec, threshold_odor=threshold_odor, attribute=attribute, column=column, relative_to='exit', framerange=framerange)
+        ax.hlines(0,-180,180,linestyles='dotted',linewidth=0.5)
+        ax.set_aspect('auto')
+        ax.set_ylim(ylim[0], ylim[1])
+        ax.set_xlim(xlim[0], xlim[1])
+        fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=yticks)
+        ax.set_xticklabels(xticklabels)
+        ax.set_yticklabels(ytick_labels)
+        ax.set_xlabel(xlabel)
+        ax.set_aspect('auto')
+        ax.set_ylabel('time relative to leaving odor plume, sec')
+        
     
     path = config.path
     figure_path = os.path.join(path, config.figure_path)
@@ -775,8 +809,6 @@ def get_saccades_relative_to_odor_for_trajec(trajec, threshold_odor=10, relative
         
     n = 0
     for frame_rel, frame_chunk in chunks.items():
-        if n == 0:
-            pass
             
         for sac in trajec.saccades:
             if sac[0] > frame_rel:
@@ -815,8 +847,6 @@ def get_headings_relative_to_odor_for_trajec(trajec, threshold_odor=10, relative
         
     n = 0
     for frame_rel, frame_chunk in chunks.items():
-        if n == 0:
-            pass
             
         for sac in trajec.saccades:
             if sac[0] > frame_rel:
