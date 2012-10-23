@@ -57,7 +57,7 @@ def get_ufmf_frame_offset(dataset, ufmf_frames, ufmf_timestamps, npts=25):
             continue
         for f, t in enumerate(trajec.timestamp_epoch + trajec.time_fly):
             tdiff = np.abs(t - np.array(ufmf_timestamps))
-            if np.min(tdiff) < 0.008:
+            if np.min(tdiff) < 0.009:
                 n += 1
                 print np.min(tdiff)
                 if n > npts:
@@ -66,8 +66,10 @@ def get_ufmf_frame_offset(dataset, ufmf_frames, ufmf_timestamps, npts=25):
                 ufmf_timestamps_index = np.argmin(tdiff)
                 ufmf_frame = ufmf_frames[ufmf_timestamps_index]
                 frame_offset = trajec.first_frame + f - ufmf_frame
-                frame_offsets.append(frame_offset)
+                if not np.isnan(frame_offset): 
+                    frame_offsets.append(frame_offset)
                 #break # only one data point per fly
+    print 'ufmf offsets: ', np.array(frame_offsets)
     return int(np.mean(np.array(frame_offsets)))-1
     
 
@@ -229,7 +231,7 @@ def get_fast_heading_and_orientation(dataset, orientation_datafile=None, frame_t
             continue # must a frame during which there were no trajectories
         if len(possible_keys) == 0:
             continue
-        keys_in_volume = get_keys_in_volume_for_camera_frame(flydra_camera_frame, frame_to_key, dataset)
+        keys_in_volume = get_keys_in_volume_for_flydra_frame(flydra_camera_frame, frame_to_key, dataset)
         if len(keys_in_volume) < 1:
             continue # no flies
         if len(keys_in_volume) > 1:
@@ -447,7 +449,7 @@ def trajectory_movie(path, img_directory, ufmf_filename, h5, save_movie_path='',
     trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_filename, h5, save_movie_path, nkeys)
     
 # Play movie from TRAJECS
-def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_filename, h5, save_movie_path='', nkeys=5, keys=None):
+def trajectory_movie_from_dataset(body_trajectories, ufmf_filename, save_movie_path='', nkeys=5, keys=None):
     '''
     path = '/home/caveman/DATA/20120924_HCS_odor_horizon'
     orientation_datafile = '/home/caveman/DATA/tmp_orientation_checks/data.pickle'
@@ -456,7 +458,7 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     '''
     
     if keys is None:
-        keys = dataset.trajecs.keys()
+        keys = body_trajectories.keys()
 
     orientation = []
     center = []
@@ -464,19 +466,17 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
 
     n = -1
     for key in keys:
-        if h5 not in key:
-            continue
-        trajec = dataset.trajecs[key]
-        if len(trajec.frames_with_orientation) < 1:
+        trajec = body_trajectories[key]
+        if len(trajec['ufmf_frames']) < 1:
             continue
         print key
         n += 1
         if n >= nkeys:
             break
         print n
-        orientation.extend(copy.copy(trajec.orientation))
-        center.extend(copy.copy(trajec.orientation_center))
-        ufmf_frames.extend( (np.array(copy.copy(trajec.frames_with_orientation)) + trajec.first_frame - trajec.ufmf_frame_offset).tolist())
+        orientation.extend(copy.copy(trajec['orientation_smooth']))
+        center.extend(copy.copy(trajec['position']).tolist())
+        ufmf_frames.extend( trajec['ufmf_frames'] )
     
     print 'first ufmf frame: ', ufmf_frames[0]
     print 'n frames: ', len(ufmf_frames)
@@ -492,15 +492,6 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     movie = ufmf.FlyMovieEmulator(ufmf_filename)
     imgmovie = ImgMovie(movie, ufmf_frames)
     images = imgmovie.get_frame
-    
-    if 0:
-        print 'saving images'
-        if not os.path.isdir(img_directory):
-            os.mkdir(img_directory)
-        save_ufmf_images_to_directory(ufmf_filename, img_directory, ufmf_frames)
-        print 'done with saving images'
-        print
-    
     
     # get x/y limits (from image)
     #img = flyanim.get_nth_image_from_directory(0, img_directory)
@@ -527,7 +518,7 @@ def trajectory_movie_from_dataset(dataset, img_directory, frame_to_key, ufmf_fil
     edgecolor = 'red'
     ghost_tail = 20
     nskip = 0
-    wedge_radius = 25
+    wedge_radius = 30
     imagecolormap = 'gray'
     
     if len(save_movie_path) > 0:
@@ -646,37 +637,35 @@ def process_raw_orientation_data(orientation_datafiles):
     ufmf_frames[bad_measurements] = -1
     ufmf_frames = ufmf_frames.tolist()
     
-    chunks, break_points = flymath.get_continuous_chunks(ufmf_frames)
+    chunk_indices = flymath.get_continuous_chunks(ufmf_frames, return_index=True)
     
     body_trajectories = {}
     
     key = -1
-    for i, break_point in enumerate(break_points):
+    for ii, indices in enumerate(chunk_indices):
         key += 1
-        if break_point >= len(ufmf_frames):
-            break
-        chunk = ufmf_frames[break_point:break_points[i+1]]
-        if type(chunk) is not list:
-            chunk = chunk.tolist()
-            
-        if len(chunk) < 10:
+        
+        ufmf_frame_chunk = np.array(ufmf_frames)[indices]
+        if np.mean(ufmf_frame_chunk) < 0:
+            continue
+        if len(ufmf_frame_chunk) < 3:
             continue
         print key
             
-        heading = np.zeros(len(chunk))
-        heading_air = np.zeros(len(chunk))
-        orientation = np.zeros(len(chunk))
-        position = np.zeros([len(chunk), 2])
-        speed = np.zeros(len(chunk))
+        heading = np.zeros(len(ufmf_frame_chunk))
+        heading_air = np.zeros(len(ufmf_frame_chunk))
+        orientation = np.zeros(len(ufmf_frame_chunk))
+        position = np.zeros([len(ufmf_frame_chunk), 2])
+        speed = np.zeros(len(ufmf_frame_chunk))
         
         #chunk_indices = np.arange(0, len(chunk))
         #ufmf_indices = np.arange(break_point,break_points[i+1])
         
         #vel_norm = [(center[b] - center[b-1]/np.linalg.norm(center[b]
-        for chunk_index, b in enumerate(np.arange(break_point,break_points[i+1])):
+        for chunk_index, ufmf_index in enumerate(indices):
             if chunk_index == 0:
                 continue
-            vel_norm = (center[b] - center[b-1])
+            vel_norm = (center[ufmf_index] - center[ufmf_index-1])
             speed[chunk_index] = np.linalg.norm(copy.copy(vel_norm))
             vel_norm = vel_norm / np.linalg.norm(vel_norm)
             vel_norm_air = copy.copy(vel_norm)
@@ -702,9 +691,9 @@ def process_raw_orientation_data(orientation_datafiles):
             else:
                 heading[chunk_index] -= np.pi
                     
-            position[chunk_index] = center[b]
+            position[chunk_index] = center[ufmf_index]
             
-            orientation[chunk_index] = np.arctan2(longaxis[b][0]*-1, longaxis[b][1])
+            orientation[chunk_index] = np.arctan2(longaxis[ufmf_index][0]*-1, longaxis[ufmf_index][1])
             n = 0
             if 1:
                 while np.abs(flymath.fix_angular_rollover(orientation[chunk_index]-orientation[chunk_index-1])) > np.pi/2.:
@@ -726,8 +715,13 @@ def process_raw_orientation_data(orientation_datafiles):
             
         heading[0] = heading[1]
         heading_air[0] = heading_air[1]
-        position[0] = center[break_point]
-        orientation[0] = np.arctan2(longaxis[break_point][0]*-1, longaxis[break_point][1])
+        position[0] = center[indices[0]]
+        speed[0] = speed[1]
+        
+        if np.mean(speed) < 2:
+            continue
+        
+        orientation[0] = np.arctan2(longaxis[indices[0]][0]*-1, longaxis[indices[0]][1])
         n = 0
         while np.abs(flymath.fix_angular_rollover(orientation[0]-orientation[1])) > np.pi/2.:
         #if np.abs(orientation-velocity_heading) > np.pi/2.:
@@ -769,9 +763,9 @@ def process_raw_orientation_data(orientation_datafiles):
         
         
         trajec = {}
-        trajec.setdefault('ufmf_timestamps', timestamp[break_point:break_points[i+1]])
-        trajec.setdefault('ufmf_frames', chunk)
-        trajec.setdefault('eccentricity', eccentricity[break_point:break_points[i+1]])
+        trajec.setdefault('ufmf_timestamps', timestamp[indices])
+        trajec.setdefault('ufmf_frames', ufmf_frame_chunk)
+        trajec.setdefault('eccentricity', eccentricity[indices])
         trajec.setdefault('heading', heading_air)
         trajec.setdefault('heading', heading)
         trajec.setdefault('speed', speed)
@@ -843,6 +837,10 @@ def bind_body_trajectories_to_dataset(config, dataset, orientation_datafiles, uf
                 trajec.ufmf_frame_offset = copy.copy(ufmf_frame_offset)
                 flydra_frames = np.array(body_trajec['ufmf_frames']) + ufmf_frame_offset
                 fly_frames = flydra_frames - trajec.first_frame
+                try:
+                    hack = len(trajec.frames_with_orientation_data[-1])
+                except:
+                    hack = 0
                 trajec.frames_with_orientation_data.append(fly_frames)
                 print 'set orientations for: ', keys[0]
 
@@ -900,8 +898,6 @@ def get_body_trajectories_from_dataset(dataset, keys=None, odor=True, threshold_
             
                     
             try:
-                data.setdefault('speed', 0)
-                data['speed'] = trajec.speed_xy[trajec.frames_with_orientation_data[i]]
                 n += 1
                 body_trajectories.setdefault(n, data)
             except:
@@ -920,15 +916,17 @@ def plot_heading_vs_orientation_trajectories(body_trajectories, config, keys=Non
         
     n = 0
     for key in keys:
+        print key
         trajec = body_trajectories[key]
         
         # ignore trajectories where mean slip angle is less than X
-        indices_crosswind = np.where( (np.abs(trajec['heading']) > 45*np.pi/180.)*(np.abs(trajec['heading']) < 135*np.pi/180.) )[0]
-        slipangles = (trajec['heading'] - trajec['orientation_smooth'])[indices_crosswind]
-        if np.mean(np.abs(slipangles)) < 45*np.pi/180.:
-            pass
-        else:
-            continue
+        if 0:
+            indices_crosswind = np.where( (np.abs(trajec['heading']) > 45*np.pi/180.)*(np.abs(trajec['heading']) < 135*np.pi/180.) )[0]
+            slipangles = (trajec['heading'] - trajec['orientation_smooth'])[indices_crosswind]
+            if np.mean(np.abs(slipangles)) < 45*np.pi/180.:
+                pass
+            else:
+                continue
         
         if 1: #(trajec['position'][-1,1] - trajec['position'][0,1]) < 0:
             fig = plt.figure(figsize=(4,4))
@@ -1004,6 +1002,79 @@ def plot_heading_vs_orientation_scatter(body_trajectories, config, keys=None):
     
     
     fig.savefig(pdf_name_with_path, format='pdf')        
+    
+    
+def compare_camera_and_flydra(dataset, config, keys=None, frame_hacks=None):
+    if keys is None:
+        keys = dataset.trajecs.keys()
+        
+    book_name = 'camera_and_flydra_compared.pdf'
+    
+    figure_path = os.path.join(config.path, config.figure_path)
+    save_figure_path = os.path.join(figure_path, 'odor_traces/')
+    pdf_name_with_path = os.path.join(save_figure_path, book_name)
+    pp = PdfPages(pdf_name_with_path)
+    
+    history = 300
+    
+    n = 0
+    for k, key in enumerate(keys):
+        print key
+        trajec = dataset.trajecs[key]
+        body_data = trajec.body_orientation_data
+        
+        if n>1000:
+            break
+            
+        for i in range(len(body_data)):
+            n += 1
+            
+            fwod = trajec.frames_with_orientation_data[i]
+            if len(fwod) < 10:
+                continue
+            
+            frames_start = fwod[0] - history
+            frames_start = np.max([frames_start, 0])
+            frames_end = np.min([fwod[-1]+100, trajec.length])
+            frames = np.arange(frames_start, frames_end)
+            
+            fig = plt.figure()
+            ax = fig.add_subplot(211)
+            
+            #ax.plot(trajec.positions[frames,0], trajec.positions[frames,1])
+            
+            
+            if frame_hacks is not None:
+                hack = frame_hacks[k]
+            else:
+                hack = 0
+        
+            fpl.colorline_with_heading(ax, trajec.positions[fwod+hack,0], trajec.positions[fwod+hack,1], 'black', body_data[i]['orientation_smooth'], size_radius=0.02, deg=False, flip=False, nskip=1)
+                
+            fpl.colorline_with_heading(ax, trajec.positions[frames,0], trajec.positions[frames,1], trajec.odor[frames], trajec.heading_smooth[frames], size_radius=0.01, nskip=0, colornorm=[0,150], deg=False, flip=False, show_centers=False)
+            
+            ax.set_xlim(-.2,1)
+            ax.set_ylim(-.15,.15)
+            ax.set_aspect('equal')
+            
+            title = str(trajec.key).replace('_', '-') + ' ' + str(body_data[i]['key'])
+            ax.set_title(title)
+            
+            
+            ax = fig.add_subplot(212)
+            fpl.colorline_with_heading(ax, body_data[i]['position'][:,1], -1*body_data[i]['position'][:,0], 'red', orientation=body_data[i]['heading'], size_radius=15, deg=False, nskip=0, center_point_size=0.01, flip=False)
+                
+            fpl.colorline_with_heading(ax, body_data[i]['position'][:,1], -1*body_data[i]['position'][:,0], 'black', orientation=body_data[i]['orientation_smooth'], size_radius=15, deg=False, nskip=0, center_point_size=0.01, flip=False)
+            
+            ax.set_xlim(0,650)
+            ax.set_ylim(-450,0)
+            
+            pp.savefig()
+            plt.close('all')
+        
+    pp.close()
+
+
     
     
 # difference between odor and no odor
@@ -1127,6 +1198,173 @@ def show_orientation_difference(dataset, config):
     pdf_name_with_path = os.path.join(save_figure_path, 'orientation_odor_no_odor_difference.pdf')
     fig.savefig(pdf_name_with_path, format='pdf')     
     
+
+def find_trajectories_with_orientation_soon_after_odor(dataset, history=100, threshold_odor=10):
+    keys = []
+    keys_odor = fad.get_keys_with_attr(dataset, 'odor_stimulus', 'on')
+    for key in keys_odor:
+        trajec = dataset.trajecs[key]
+        try:
+            body_data = trajec.body_orientation_data
+        except:
+            body_data = []
+        if len(body_data) < 1:
+            continue
+        
+        for i in range(len(body_data)):
+            fwod = trajec.frames_with_orientation_data[i]
+            frames_start = fwod[0] - history
+            frames_start = np.max([frames_start, 0])
+            frames_end = np.min([fwod[-1], trajec.length])
+            frames = np.arange(frames_start, fwod[0])
+            if len(frames) > 10:
+                if np.max(trajec.odor[frames]) > threshold_odor:
+                    if key not in keys:
+                        keys.append(key)
+                else:
+                    continue
+        
+    return keys
+    
+    
+def plot_slipangles_vs_speed(dataset, config, cast=None, surge=None):
+    # cast, surge = cast_and_surge.get_mean_speed_in_cast(dataset, keys)
+
+    frames_to_seconds = 100.
+    pixels_to_meters = 1./5488.
+
+    keys_odor = fad.get_keys_with_attr(dataset, 'odor_stimulus', 'on')
+    keys_noodor = fad.get_keys_with_attr(dataset, 'odor_stimulus', 'none')
+    keys_afterodor = fad.get_keys_with_attr(dataset, 'odor_stimulus', 'afterodor')
+    keys_noodor.extend(keys_afterodor)
+    
+    body_trajectories_odor = get_body_trajectories_from_dataset(dataset, keys=keys_odor)
+    body_trajectories_noodor = get_body_trajectories_from_dataset(dataset, keys=keys_noodor)
+    
+    headings_odor, orientations_odor, speeds_odor = get_orientations_and_headings_for_body_trajectories(body_trajectories_odor)
+    headings_noodor, orientations_noodor, speeds_noodor = get_orientations_and_headings_for_body_trajectories(body_trajectories_noodor)
+    
+    speeds_odor *= pixels_to_meters
+    speeds_odor *= frames_to_seconds
+    speeds_noodor *= pixels_to_meters
+    speeds_noodor *= frames_to_seconds
+    slipangles_odor = flymath.fix_angular_rollover(headings_odor*np.pi/180. - orientations_odor*np.pi/180.)*180/np.pi
+    slipangles_noodor = flymath.fix_angular_rollover(headings_noodor*np.pi/180. - orientations_noodor*np.pi/180.)*180/np.pi
+    
+    # where casting
+    #return headings_odor
+    cast_indices = np.where( (np.abs(headings_odor)>60)*(np.abs(headings_odor)<100) == True)[0]
+    
+    binsx = np.linspace(-180, 180, 50)
+    binsy = np.linspace(0, 1, 50)
+
+    fig = plt.figure(figsize=(10,4))
+    fig.subplots_adjust(hspace=0.2, wspace=0.3)
+    ax = fig.add_subplot(141)
+    fpl.histogram2d(ax, slipangles_noodor, speeds_noodor, bins=(binsx,binsy), logcolorscale=True)
+    xticks = [-180, -90, 0, 90, 180]
+    xticklabels = ['-180', '-90', 'aligned', '90', '180']
+    yticks = [0,0.2,0.4,0.6,0.8,1.0]
+    fpl.adjust_spines(ax, ['left', 'bottom'], xticks=xticks, yticks=yticks)
+    ax.set_xticklabels(xticklabels)
+    ax.set_xlabel('slip angle between body\norientation and heading, deg')
+    ax.set_ylabel('speed, m/s')
+    ax.set_title('No odor present\nall maneuvers')
+    
+    ax = fig.add_subplot(142)
+    fpl.histogram2d(ax, slipangles_odor, speeds_odor, bins=(binsx,binsy), logcolorscale=True)
+    xticks = [-180, -90, 0, 90, 180]
+    xticklabels = ['-180', '-90', 'aligned', '90', '180']
+    yticks = [0,0.2,0.4,0.6,0.8,1.0]
+    fpl.adjust_spines(ax, ['bottom'], xticks=xticks, yticks=yticks)
+    ax.set_xticklabels(xticklabels)
+    ax.set_xlabel('slip angle between body\norientation and heading, deg')
+    ax.set_title('Odor present\nall maneuvers')
+    
+    ax = fig.add_subplot(143)
+    fpl.histogram2d(ax, slipangles_odor[cast_indices], speeds_odor[cast_indices], bins=(binsx,binsy), logcolorscale=True)
+    xticks = [-180, -90, 0, 90, 180]
+    xticklabels = ['-180', '-90', 'aligned', '90', '180']
+    yticks = [0,0.2,0.4,0.6,0.8,1.0]
+    fpl.adjust_spines(ax, ['bottom'], xticks=xticks, yticks=yticks)
+    ax.set_xticklabels(xticklabels)
+    ax.set_xlabel('slip angle between body\norientation and heading, deg')
+    ax.set_title('Odor present\ncasting maneuvers')
+    
+    ax = fig.add_subplot(144)
+    fpl.histogram(ax, [np.array(cast)], bins=50, colors=['black'], alignment='horizontal', normed=True)
+    #fpl.histogram(ax, [np.array(cast)], bins=50, colors=['red'], normed=True, alignment='horizontal')
+    ax.set_ylim(0,1)
+    xticks = [0,2,4]
+    fpl.adjust_spines(ax, ['right', 'bottom'], xticks=xticks)
+    ax.set_xlabel('Occurences, normalized')
+    ax.set_title('Casting maneuvers\nfrom 3D tracks')
+        
+    figure_path = os.path.join(config.path, config.figure_path)
+    save_figure_path = os.path.join(figure_path, 'odor_traces/')
+    pdf_name_with_path = os.path.join(save_figure_path, 'slipangles_vs_speed.pdf')
+    fig.savefig(pdf_name_with_path, format='pdf')     
+    
+    
+def plot_odor_trajectories_with_orientation(dataset, config):
+    #keys = find_trajectories_with_orientation_soon_after_odor(dataset, history=100, threshold_odor=10)
+    
+    smoking_guns = [ '20121002_184808_5500',
+                     '20121002_184808_6108',
+                     '20121002_184808_6160',
+                     '20121002_184808_6643',
+                     '20121002_184808_5455']
+    keys = smoking_guns
+    
+    book_name = 'trajectories_with_odor_and_orientation.pdf'
+    
+    figure_path = os.path.join(config.path, config.figure_path)
+    save_figure_path = os.path.join(figure_path, 'odor_traces/')
+    pdf_name_with_path = os.path.join(save_figure_path, book_name)
+    pp = PdfPages(pdf_name_with_path)
+    
+    history = 300
+    
+    n = 0
+    for key in keys:
+        print key
+        trajec = dataset.trajecs[key]
+        body_data = trajec.body_orientation_data
+        
+        if n>1000:
+            break
+            
+        for i in range(len(body_data)):
+            n += 1
+            
+            fwod = trajec.frames_with_orientation_data[i]
+            if len(fwod) < 10:
+                continue
+            
+            frames_start = fwod[0] - history
+            frames_start = np.max([frames_start, 0])
+            frames_end = np.min([fwod[-1]+100, trajec.length])
+            frames = np.arange(frames_start, frames_end)
+            
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            
+            #ax.plot(trajec.positions[frames,0], trajec.positions[frames,1])
+            
+            fpl.colorline_with_heading(ax, trajec.positions[fwod,0], trajec.positions[fwod,1], 'black', body_data[i]['orientation_smooth'], size_radius=0.02, deg=False, flip=False, nskip=1)
+            fpl.colorline_with_heading(ax, trajec.positions[frames,0], trajec.positions[frames,1], trajec.odor[frames], trajec.heading_smooth[frames], size_radius=0.01, nskip=1, colornorm=[0,150], deg=False, flip=False, show_centers=False)
+            
+            ax.set_xlim(-.2,1)
+            ax.set_ylim(-.15,.15)
+            ax.set_aspect('equal')
+            
+            title = str(trajec.key).replace('_', '-') + ' ' + str(body_data[i]['key'])
+            ax.set_title(title)
+            
+            pp.savefig()
+            plt.close('all')
+        
+    pp.close()
 
 if __name__ == '__main__':
     parser = OptionParser()

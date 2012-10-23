@@ -150,15 +150,15 @@ def plot_odor_traces_book(path, config, dataset, keys=None, show_saccades=True, 
     
     
 
-def plot_odor_traces(path, config, dataset, keys=None, show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', save=False, odor_multiplier=1):
+def plot_odor_traces(path, config, dataset, keys=None, show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', save=False, odor_multiplier=1, frameranges=None):
 
     ax_xy, ax_xz, ax_yz = xyz_axis_grid.get_axes()
     
-    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='xy', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_xy, odor_multiplier=odor_multiplier, show_post=config.post)
+    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='xy', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_xy, odor_multiplier=odor_multiplier, show_post=config.post, frameranges=frameranges)
     
-    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='xz', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_xz, odor_multiplier=odor_multiplier, show_post=config.post)
+    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='xz', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_xz, odor_multiplier=odor_multiplier, show_post=config.post, frameranges=frameranges)
     
-    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='yz', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_yz, odor_multiplier=odor_multiplier, show_post=config.post)
+    plot_odor_trace_on_ax(path, config, dataset, keys=keys, axis='yz', show_saccades=show_saccades, frames_to_show_before_odor=frames_to_show_before_odor, frames_to_show_after_odor=frames_to_show_after_odor, ax=ax_yz, odor_multiplier=odor_multiplier, show_post=config.post, frameranges=frameranges)
     
     xyz_axis_grid.set_spines_and_labels(ax_xy, ax_xz, ax_yz)
     
@@ -174,7 +174,7 @@ def plot_odor_traces(path, config, dataset, keys=None, show_saccades=False, fram
         plt.savefig(figname, format='pdf')
 
 
-def plot_odor_trace_on_ax(path, config, dataset, keys=None, axis='xy', show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', ax=None, odor_multiplier=1, show_post=True, save=False):
+def plot_odor_trace_on_ax(path, config, dataset, keys=None, axis='xy', show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', ax=None, odor_multiplier=1, show_post=True, save=False, frameranges=None):
     # test with '0_9174'
     
     if keys is None: 
@@ -222,17 +222,27 @@ def plot_odor_trace_on_ax(path, config, dataset, keys=None, axis='xy', show_sacc
         frames_where_odor = np.where(trajec.odor > 10)[0]
         #frames_where_odor = hf.find_continuous_blocks(frames_where_odor, 5, return_longest_only=True)
         
-        if frames_to_show_before_odor == 'all':
-            frame0 = 0
+        if frameranges is not None:
+            if frameranges.has_key(key):
+                frames = np.arange(frameranges[key][0], frameranges[key][-1])
+                autoframerange = False
+            else:
+                autoframerange = True
         else:
-            frame0 = np.min(frames_where_odor) - frames_to_show_before_odor
-            frame0 = np.max([frame0, 0])
-        if frames_to_show_after_odor == 'all':
-            frame1 = trajec.length
-        else:
-            frame1 = np.argmax(trajec.odor) + frames_to_show_after_odor
-            frame1 = np.min([trajec.length, frame1])
-        frames = np.arange(frame0, frame1)
+            autoframerange = True
+        if autoframerange:
+            if frames_to_show_before_odor == 'all':
+                frame0 = 0
+            else:
+                frame0 = np.min(frames_where_odor) - frames_to_show_before_odor
+                frame0 = np.max([frame0, 0])
+            if frames_to_show_after_odor == 'all':
+                frame1 = trajec.length
+            else:
+                frame1 = np.argmax(trajec.odor) + frames_to_show_after_odor
+                frame1 = np.min([trajec.length, frame1])
+            frames = np.arange(frame0, frame1)
+        
         
         tac.calc_heading_for_axes(trajec, axis=axis)
         orientation = trajec.__getattribute__('heading_smooth_'+axis)
@@ -314,14 +324,14 @@ def pdf_book(config, dataset, save_figure_path=''):
         for odor_stimulus, keys in key_set.items():
             print 'Odor Book, Chapter: ', odor_stimulus
             
-            if len(keys) < 50:
+            if len(keys) < 250:
                 keys_to_plot = keys
             else:
-                keys_to_plot = keys[0:50]
+                keys_to_plot = keys[250:500]
                 
             book_name = 'odor_trace_book_' + odor_stimulus + '_' + str(odor) + '.pdf'
                 
-            plot_odor_traces_book(config.path, config, dataset, keys=keys_to_plot, show_saccades=False, frames_to_show_before_odor='all', frames_to_show_after_odor='all', odor_multiplier=1, book_name=book_name)
+            plot_odor_traces_book(config.path, config, dataset, keys=keys_to_plot, show_saccades=False, frames_to_show_before_odor=100, frames_to_show_after_odor=100, odor_multiplier=1, book_name=book_name)
 
 
 if __name__ == '__main__':
